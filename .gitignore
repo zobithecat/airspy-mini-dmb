@@ -18,6 +18,10 @@ venv/
 # Vendored upstream (huge; rebuild via patches)
 eti-stuff/
 
+# Build artefacts (FFmpeg fork, etc.)
+build/
+local/
+
 # Captured RF / ETI data
 data/scan/
 data/captures/
