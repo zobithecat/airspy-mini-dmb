@@ -129,12 +129,25 @@ patches/
   eti-cmdline-macos-arm64.patch
 ```
 
-## 알려진 사항 / TODO
+## 알려진 사항
 
 - 동봉 FM 텔레스코픽 안테나로는 200 MHz가 약하게 잡힘. **VHF Band III
   dipole/folded dipole**로 SNR 14+ dB 확보가 Stage 2/3 진행 전제.
-- Stage 3 SL/OD 디먹서 자체 구현은 1–2주 작업. 현실적 대안:
-  - [`welle.io`](https://www.welle.io/) — T-DMB 비디오 통합 검증된 도구
-  - 본 프로젝트는 ETI까지의 파이프라인이 강점이므로 SL→H.264는
-    ffmpeg patch + custom demuxer 또는 welle.io 결합으로 가는 게 실용적.
-- 오디오: 한국 T-DMB는 MPEG-4 BSAC. FFmpeg BSAC 디코더는 experimental.
+- 한국 T-DMB 오디오는 MPEG-4 BSAC. 일반 FFmpeg는 디코딩 못 함 — 본 프로젝트는
+  Stage 3에서 [dmb-oss/FFmpeg](https://github.com/dmb-oss/FFmpeg) 패치 통합
+  (BSAC + SL OD stream + DMB mpegts 수정).
+- HD DMB (HEVC + HE-AAC v2)는 TS 레벨에서 암호화되어 있음 (TTAK.KO-07.0043/R1).
+  키 없이는 디코드 불가.
+
+## 참고 문헌 / Related work
+
+- **S. Eo and S. Bahk**, "T-DMB Receiver Implementation based on Open-source
+  Software Suite," *Proc. ICTC 2024*, IEEE, pp. 313–317.
+  논문에서 GNU Radio (`gr-dab` patched) + FFmpeg (BSAC + SL 패치) 조합으로
+  RTL-SDR을 사용한 T-DMB 수신기를 구현. 본 프로젝트의 Stage 1/2가 그들의
+  DAB 디코더 단계와 일치하며, Stage 3는 그들의 FFmpeg 패치를 통합 사용.
+  소스: <https://github.com/dmb-oss>
+- ETSI TS 102 427 — DMB MPEG-2 TS streaming with RS+CI outer FEC
+- ETSI TS 102 428 — DMB video service (user application spec)
+- TTAK.KO-07.0026/R7 — Korean DMB Video Services
+- TTAK.KO-07.0024/R2 — Korean DMB System
