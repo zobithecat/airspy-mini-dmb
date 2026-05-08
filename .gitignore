@@ -1,0 +1,33 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+*.egg-info/
+build/
+dist/
+.venv/
+venv/
+
+# Editor / OS
+.DS_Store
+*.swp
+.idea/
+.vscode/
+
+# Vendored upstream (huge; rebuild via patches)
+eti-stuff/
+
+# Captured RF / ETI data
+data/scan/
+data/captures/
+*.eti
+*.iq
+*.bin
+*.ts
+
+# Generated ensemble JSON dumps (from eti-cmdline -J)
+ensemble-ch-*.json
+
+# Local settings
+.claude/settings.local.json

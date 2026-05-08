@@ -1,0 +1,20 @@
+[project]
+name = "airspy-mini-dmb"
+version = "0.1.0"
+description = "Korean T-DMB receiver using Airspy Mini + eti-cmdline"
+requires-python = ">=3.11"
+dependencies = [
+    "PyQt6>=6.6",
+    "numpy>=1.26",
+    "av>=12.0",
+]
+
+[project.scripts]
+tdmb = "tdmb.__main__:main"
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
