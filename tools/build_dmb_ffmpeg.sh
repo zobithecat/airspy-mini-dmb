@@ -30,6 +30,12 @@ fi
 
 cd "${SRC}"
 
+# CRITICAL: dmb-oss/FFmpeg's master is a vanilla upstream mirror.
+# The DMB patches live on the `dev-dmb` branch. Make sure we are on it.
+git fetch origin dev-dmb 2>/dev/null || true
+git checkout dev-dmb 2>/dev/null || git checkout -b dev-dmb origin/dev-dmb
+echo "checked out: $(git rev-parse --short HEAD) — $(git log -1 --pretty=%s)"
+
 echo "[2/3] configuring (this can take a moment)..."
 # macOS Homebrew library paths
 EXTRA_CFLAGS=""

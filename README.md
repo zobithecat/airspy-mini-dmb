@@ -134,8 +134,10 @@ patches/
 - 동봉 FM 텔레스코픽 안테나로는 200 MHz가 약하게 잡힘. **VHF Band III
   dipole/folded dipole**로 SNR 14+ dB 확보가 Stage 2/3 진행 전제.
 - 한국 T-DMB 오디오는 MPEG-4 BSAC. 일반 FFmpeg는 디코딩 못 함 — 본 프로젝트는
-  Stage 3에서 [dmb-oss/FFmpeg](https://github.com/dmb-oss/FFmpeg) 패치 통합
-  (BSAC + SL OD stream + DMB mpegts 수정).
+  Stage 3에서 [dmb-oss/FFmpeg](https://github.com/dmb-oss/FFmpeg) 의 `dev-dmb`
+  브랜치 사용 (BSAC + SL OD stream + DMB mpegts 패치 7종).
+  주의: `master` 브랜치는 단순 upstream FFmpeg 미러이고, 실제 패치는 `dev-dmb`
+  에 있음. `tools/build_dmb_ffmpeg.sh` 가 알아서 체크아웃함.
 - HD DMB (HEVC + HE-AAC v2)는 TS 레벨에서 암호화되어 있음 (TTAK.KO-07.0043/R1).
   키 없이는 디코드 불가.
 
