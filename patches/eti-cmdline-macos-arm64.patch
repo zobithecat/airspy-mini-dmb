@@ -26,7 +26,7 @@ index d82d499..0ab4236 100755
  	target_link_libraries (${objectName}
  #	                       ${FFTW3F_LIBRARIES}
 diff --git a/eti-cmdline/devices/airspy-handler/airspy-handler.cpp b/eti-cmdline/devices/airspy-handler/airspy-handler.cpp
-index 722fbc3..0c093a3 100755
+index 722fbc3..cbd7092 100755
 --- a/eti-cmdline/devices/airspy-handler/airspy-handler.cpp
 +++ b/eti-cmdline/devices/airspy-handler/airspy-handler.cpp
 @@ -45,6 +45,14 @@ uint32_t samplerate_count;
@@ -53,12 +53,28 @@ index 722fbc3..0c093a3 100755
  	Handle		= dlopen ("libairspy.so", RTLD_LAZY);
  #endif
  
-@@ -196,7 +204,26 @@ int32_t	bufSize	= EXTIO_NS * EXTIO_BASE_TYPE_SIZE * 2;
+@@ -196,7 +204,42 @@ int32_t	bufSize	= EXTIO_NS * EXTIO_BASE_TYPE_SIZE * 2;
  	   return false;
  	}
  
 -	result = my_airspy_set_sensitivity_gain (device, gain * 21 / 100);
-+	if (gain <= 0) {
++	// Env-var override: AIRSPY_LNA / AIRSPY_MIXER / AIRSPY_VGA each 0-15
++	// take precedence over -G when set, allowing manual gain tuning.
++	const char *env_l = getenv ("AIRSPY_LNA");
++	const char *env_m = getenv ("AIRSPY_MIXER");
++	const char *env_v = getenv ("AIRSPY_VGA");
++	if (env_l && env_m && env_v) {
++	   int L = atoi(env_l), M = atoi(env_m), V = atoi(env_v);
++	   if (L < 0) L = 0; if (L > 14) L = 14;
++	   if (M < 0) M = 0; if (M > 15) M = 15;
++	   if (V < 0) V = 0; if (V > 15) V = 15;
++	   if (my_airspy_set_lna_agc != NULL)   my_airspy_set_lna_agc (device, 0);
++	   if (my_airspy_set_mixer_agc != NULL) my_airspy_set_mixer_agc (device, 0);
++	   if (my_airspy_set_lna_gain != NULL)   my_airspy_set_lna_gain (device, L);
++	   if (my_airspy_set_mixer_gain != NULL) my_airspy_set_mixer_gain (device, M);
++	   if (my_airspy_set_vga_gain != NULL)   my_airspy_set_vga_gain (device, V);
++	   fprintf (stderr, "[airspy] manual gain L=%d M=%d V=%d (env-var)\n", L, M, V);
++	} else if (gain <= 0) {
 +	   // gain == 0 -> hardware AGC: LNA + mixer auto, VGA at midpoint
 +	   if (my_airspy_set_lna_agc != NULL)
 +	      my_airspy_set_lna_agc (device, 1);
