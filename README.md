@@ -68,6 +68,13 @@ pip install -e .            # 또는: pip install PyQt6 numpy av reedsolo
 
 ## 사용
 
+### 🎬 한 줄 데모 (캡처 파일에서 전체 파이프라인 시연)
+```sh
+bash tools/demo.sh
+```
+저장된 K8B 캡처 (FIB 72%) 로 ETI → FIC → MSC → TS → 합성 PMT → ffmpeg
+인식까지 단계별 출력. 신호 SNR 충분하면 같은 파이프라인이 비디오까지 디코드.
+
 ### GUI
 ```sh
 python -m tdmb
