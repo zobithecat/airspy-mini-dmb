@@ -140,6 +140,10 @@ patches/
 
 - 동봉 FM 텔레스코픽 안테나로는 200 MHz가 약하게 잡힘. **VHF Band III
   dipole/folded dipole**로 SNR 14+ dB 확보가 Stage 2/3 진행 전제.
+  실측: AliExpress LoRa 900 MHz 안테나 → Δ +1-3 dB, K8B만 가끔 OFDM 동기.
+  좀 더 광대역 안테나로 교체 → Δ +4-6 dB, K8B/K12A/K12B/K12C/K10B/K11B/K13A
+  6개 채널이 OFDM 동기. K12B(U-KBS)는 `FIG2 aanwezig` 까지 도달하나 FIB CRC
+  통과 못 함. 12 dB 임계까지 ~5-7 dB 부족 — 외부 LNA 또는 옥상 안테나 필요.
 - 한국 T-DMB 오디오는 MPEG-4 BSAC. 일반 FFmpeg는 디코딩 못 함 — 본 프로젝트는
   Stage 3에서 [dmb-oss/FFmpeg](https://github.com/dmb-oss/FFmpeg) 의 `dev-dmb`
   브랜치 사용 (BSAC + SL OD stream + DMB mpegts 패치 7종).
