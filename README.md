@@ -40,8 +40,16 @@ ETI 캡처 23 MB에서 1254 frames, FIB OK 50–79% (SNR 9 dB).
 H.264 → MPEG-4 SL packet → MPEG-2 PES → MPEG-2 TS (188B) → MSC sub-channel
 ```
 
-추출한 PES에서 `stream_id=0xfa` (SL-packetized) 확인. 일반 ffmpeg는
-이걸 풀 수 없고 (NAL start code도 안 나옴), 별도 SL/OD 디먹서가 필요.
+추출한 PES에서 `stream_id=0xfa` (SL-packetized) 확인 — 93개 PES. 일반
+ffmpeg는 이걸 풀 수 없고 (NAL start code도 안 나옴), 별도 SL/OD 디먹서
+필요. `tools/extract_sl_h264.py` 가 SL→H.264 ES 추출하는 직접 경로 제공.
+
+5분 K8B 캡처 분석 (SNR 12-14 dB, FIB 75%):
+- 4 ensemble 동시 디코드 (YTN/MBC/U-KBS/SBSu) → Stage 1 견고
+- TS slot-sync 96.4% — 거의 모든 188B TS 바이트는 보임
+- SL-PES 93개 발견, but H.264 NAL bytes는 bit-error로 노이즈에 묻힘
+  (raw 6.2 MB에서 plausible SPS 0개, MSC EEP-3A 정정 한계 초과)
+- 코드 자체는 정확. **SNR 14 dB sustained** (현재 16% 시간만) 필요
 
 ## 빌드 / 설치
 
