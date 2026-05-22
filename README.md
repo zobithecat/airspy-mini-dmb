@@ -15,6 +15,7 @@ ETI 프레임 파싱·FIC 디코드·MSC 추출·외부 FEC·TS 분석은 모두
 
 ### 1번 단계 검증
 실제 K8B(183.008 MHz) 신노현 수신 → **YTN DMB ensemble (EId 0xE040)**.
+FIB 100%, SNR 13 dB로 디코드 (`data/captures/k8b_100pct.eti`, 30 MB).
 서비스 5개를 정확히 디코드:
 
 ```
@@ -86,6 +87,9 @@ DYLD_LIBRARY_PATH=/opt/homebrew/lib \
   ./eti-stuff/eti-cmdline/build/eti-cmdline-airspy \
   -C K8B -G 0 -d 60 -D 60 -t 60 -O capture.eti -J
 ```
+**중요:** `-C K8B` (K-prefix). 패치된 한국 raster를 쓰려면 `K` 필수.
+그냥 `-C 8B`는 ETSI 표준 raster(197.648 MHz)로 튜닝되어 한국 K8B(183.008 MHz)
+신호를 놓침.
 - `-G 0` = 하드웨어 AGC (LNA + mixer auto)
 - `-d` = OFDM 시간 동기 타임아웃(초)
 - `-D` = freq sync / ensemble dump 시간
