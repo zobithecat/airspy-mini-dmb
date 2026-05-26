@@ -22,16 +22,25 @@ eti-stuff/
 build/
 local/
 
-# Captured RF / ETI data — binary payloads excluded; JSON metadata
-# sidecars (data/**/*.json) are allowed so the artefact bundle stays
-# self-describing.  Note: do NOT exclude directories themselves
-# (e.g. `data/captures/`) — that would block git from descending into
-# them and the `!*.json` negation below would never fire.
+# Captured RF / ETI data — binary payloads excluded by default; JSON
+# metadata sidecars (data/**/*.json) are allowed so the artefact bundle
+# stays self-describing.  The two reference captures cited by the paper
+# are tracked via git-lfs (see .gitattributes) — they're whitelisted
+# below so .gitignore doesn't shadow them.
+#
+# Note: do NOT exclude directories themselves (e.g. `data/captures/`) —
+# that would block git from descending into them and the `!` negations
+# below would never fire.
 data/scan/
 *.eti
 *.iq
 *.bin
 *.ts
+
+# Reference captures — large but reproducibility-critical; stored in
+# Git LFS (see .gitattributes).
+!data/captures/k8b_100pct.eti
+!data/long_captures/k8b_5min.eti
 
 # Generated ensemble JSON dumps (from eti-cmdline -J) — these are produced
 # automatically next to each capture and aren't reproducibility metadata.

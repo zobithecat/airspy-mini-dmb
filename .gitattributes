@@ -1,0 +1,2 @@
+data/captures/*.eti filter=lfs diff=lfs merge=lfs -text
+data/long_captures/*.eti filter=lfs diff=lfs merge=lfs -text
