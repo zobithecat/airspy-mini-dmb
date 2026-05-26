@@ -233,6 +233,47 @@ Lee~외~\cite{lee2004m4smux}를 꼼꼼히 읽은 독자라면 이어지는
 (iii)~지금까지 한국형 T-DMB의 라이브러리 형태 수신기를 갖지 못했던
 오픈소스 SDR 커뮤니티 전반.
 
+\subsection{한국형 T-DMB가 왜 이렇게 생겼는가}\label{sec:why}
+
+한국형 T-DMB는 단순히 ``DAB에 영상을 얹은 것''이라기보다,
+한국의 6\,MHz VHF TV 채널 계획에 Eureka-147 DAB
+물리계층~\cite{etsi300401}을 맞춰 넣고, 저전력 모바일 수신기와
+방송 데이터 서비스를 위해 MPEG-4 Systems를 제한적으로 운용한
+역사적 산물이다.  세 개의 층이 위로 쌓여 있다.
+
+\begin{enumerate}[leftmargin=*,nosep]
+\item \textbf{RF 래스터.}  ETSI의 1.712\,MHz Band~III 래스터가
+       아니라, 한국 운용사는 6\,MHz 아날로그 TV 채널을 각각
+       1.728\,MHz DMB 블록 세 개로 분할한다 (표~\ref{tab:k-block}에
+       사용된 \texttt{K}$nn$\{A,B,C\} 표기).  이는 기존 한국
+       TV 채널 계획을 그대로 재사용하고, 사업자별 멀티플렉스
+       배분을 단순화하며, 간섭 계획을 다루기 쉽게 만들었다 ---
+       대신 ETSI band-handler 표와의 호환성을 잃는다.
+\item \textbf{외부 보호.}  DAB의 기본 MSC 스트림 보호는 비디오
+       비트레이트에는 부족하다.  따라서 T-DMB는 MSC 서브채널
+       바이트 위에 RS(204,188) 코드와 $12{\times}17$ Forney
+       컨볼루션 인터리버를 추가한다 (ETSI
+       TS~102\,427~\cite{etsi102427}).  본질적으로 DVB-T의 외부
+       부호를 DAB 파이프에 빌려온 것이다.
+\item \textbf{MPEG-2 TS 위의 제한된 MPEG-4 Systems.}  오디오·
+       비디오 기본 스트림과 MPEG-4 시스템 스트림(객체기술자,
+       장면기술/BIFS, Sync Layer)이 모두 ISO/IEC 14496-1의 SL로
+       패킷화된 뒤, 그 SL 패킷들이 다시 \texttt{stream\_id}=
+       \texttt{0xFA}로 MPEG-2 TS PES에 적재되며 (ISO/IEC 13818-1
+       Amendment~7~\cite{iso13818-1-amd7}), 결과 MPEG-2 TS가
+       DAB MSC 스트림 모드를 타고 흐른다.  2004년 ETRI의
+       Lee~외~\cite{lee2004m4smux}는 같은 경로를 ``new DMB
+       approach''로 정확히 카탈로그화하고, 같은 논문에서 채택되지
+       않은 대안 멀티플렉서도 함께 제안했다.
+\end{enumerate}
+
+이 층위 구조 때문에 일반 DAB 수신기 (예: 본 연구가 1\,--\,2단계에
+사용한 C++ \texttt{eti-stuff}~\cite{etistuff}) 는 ETI 프레임까지는
+복원할 수 있지만, 한국형 외부 FEC, SL 패킷화, BIFS/OD 시그널링,
+운용사 선택의 AVCC 배치를 처리하지 않으면 실제 비디오 프레임에는
+도달하지 못한다.  이어지는 Section~\ref{sec:rs}--\ref{sec:avcc}의
+모든 어려움은 위 세 층 가운데 어느 하나로 환원된다.
+
 % ====================================================================
 \section{시스템 개요}\label{sec:system}
 

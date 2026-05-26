@@ -268,6 +268,54 @@ graduate-level signals / communications / broadcasting course;
 and (iii)~the broader open-source SDR community, for whom Korean
 T-DMB has until now had no library-form receiver.
 
+\subsection{Why Korean T-DMB looks the way it does}\label{sec:why}
+
+Korean T-DMB should not be understood merely as ``DAB plus
+video.''  It is a historically specific adaptation of the
+Eureka-147 DAB physical layer~\cite{etsi300401} to Korea's
+6\,MHz VHF television channel plan, combined with a constrained
+MPEG-4 Systems profile designed for low-power mobile receivers
+and broadcast-data services.  Three layers stack on top of
+each other:
+
+\begin{enumerate}[leftmargin=*,nosep]
+\item \textbf{RF raster.}  Rather than the ETSI 1.712\,MHz
+      Band~III raster, Korean operators divide each 6\,MHz
+      analogue TV channel into three 1.728\,MHz DMB blocks
+      (the \texttt{K}$nn$\{A,B,C\} convention used in
+      Table~\ref{tab:k-block}).  This reused the existing
+      Korean TV channel plan, simplified per-broadcaster
+      multiplex allocation, and made interference planning
+      tractable, at the cost of incompatibility with ETSI
+      band-handler tables.
+\item \textbf{Outer protection.}  DAB's native MSC stream
+      protection is insufficient for video bit-rates, so
+      T-DMB layers RS(204,188) plus a $12{\times}17$ Forney
+      convolutional interleaver on top of the MSC sub-channel
+      bytes (ETSI TS~102\,427~\cite{etsi102427}), in essence
+      borrowing DVB-T's outer code into a DAB pipe.
+\item \textbf{Constrained MPEG-4 Systems on top of MPEG-2 TS.}
+      Audio-visual elementary streams plus the MPEG-4 system
+      streams (Object Descriptors, SceneDescription/BIFS,
+      Sync Layer) are packetised with ISO/IEC 14496-1 SL, the
+      SL packets are then put into MPEG-2 TS PES with
+      \texttt{stream\_id}=\texttt{0xFA} (ISO/IEC 13818-1
+      Amendment~7~\cite{iso13818-1-amd7}), and the resulting
+      MPEG-2 TS rides in DAB MSC stream mode.  ETRI in
+      2004~\cite{lee2004m4smux} catalogued exactly this path
+      as the ``new DMB approach'' alongside an unadopted
+      alternative multiplexer.
+\end{enumerate}
+
+This layering explains why an otherwise standard DAB receiver
+(such as the C++ \texttt{eti-stuff}~\cite{etistuff} that we
+build on for stages~1--2) can recover ETI frames but still
+fails to produce video without handling the Korean
+DMB-specific outer FEC, SL packetisation, BIFS/OD signalling,
+and operator-chosen AVCC placement.  Every layer of difficulty
+in Sections~\ref{sec:rs}--\ref{sec:avcc} below traces back to
+one of the three layers above.
+
 % ====================================================================
 \section{System Overview}\label{sec:system}
 

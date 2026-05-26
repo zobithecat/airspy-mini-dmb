@@ -146,6 +146,18 @@ open source.  Concretely:
       and figures publicly released.
 \end{itemize}
 
+\emph{Context.}  Korean T-DMB is not ``DAB plus video'' but a
+historically specific stack: the Eureka-147 DAB physical
+layer~\cite{etsi300401} squeezed into Korea's 6\,MHz VHF TV
+raster (1.728\,MHz $\times$ three sub-channels per channel),
+plus an RS(204,188)+Forney outer code on the MSC, plus a
+constrained MPEG-4 Systems profile carried in MPEG-2 TS per
+ISO/IEC 13818-1 Amendment~7.  This layering~--- catalogued
+internally at ETRI in 2004~\cite{lee2004m4smux}~--- is why an
+otherwise standard DAB receiver recovers ETI frames yet still
+cannot produce a video frame without the operator-specific
+T-DMB stack of Sections~\ref{sec:rs}--\ref{sec:avcc} below.
+
 % ====================================================================
 \section{System Overview}\label{sec:system}
 
