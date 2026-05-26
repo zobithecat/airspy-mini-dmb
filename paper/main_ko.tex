@@ -285,7 +285,11 @@ Lee~외~\cite{lee2004m4smux}를 꼼꼼히 읽은 독자라면 이어지는
 위임한다 (한국형 K-prefix 채널 인식을 위한 band-handler 표 패치, 환경변수
 방식의 Airspy 이득 단 제어 패치 두 줄).  3--7단계(ETI~$\to$~FIC,
 MSC,~RS+TI,~SL,~AVCC,~H.264~ES)는 순수 Python으로 구현된다.  최종 비디오
-디코딩은 \texttt{dmb-oss} FFmpeg가 런타임 수정 없이 수행한다.}
+디코딩은 \texttt{dmb-oss} FFmpeg가 런타임 수정 없이 수행한다.  이 블록도는
+Lee~외~\cite{lee2004m4smux}의 Figure~3(``block diagram of the precedent DMB
+approach'')을 그대로 미러링한 것이며, 본 연구가 약 20년 뒤 K8B에서 실측한
+MSC 스트림 모드의 ``MPEG-2 TS가 MPEG-4 SL을 캡슐화하는'' 동일한 전송 경로를
+보여준다.}
 \label{fig:pipeline}
 \end{figure}
 
@@ -340,7 +344,13 @@ T-DMB는 DAB 물리계층 위에 ETSI TS~102\,427~\cite{etsi102427}이 정의한
 204바이트 부호어로 리드-솔로몬 인코딩하고(RS(255,239)에서 단축한
 RS(204,188), $\alpha=2$, 원시 다항식 $0x11d$, FCR$=0$ --- DVB-T와 동일),
 그 결과 부호어 스트림을 분기 수 $N=12$, 깊이 $M=17$의 Forney 방식으로
-바이트 단위 컨볼루셔널 인터리빙한다.
+바이트 단위 컨볼루셔널 인터리빙한다.  이는 2004년 Lee~외~\cite{lee2004m4smux}가
+지적한 ``동기화의 중복 \ldots\ 다중화의 중복''을 상용 프레임워크가 떠안은
+대가이다: MPEG-4 SL이 MPEG-2 TS에 다시 DAB MSC에 터널링되는 구조에서는
+DAB 내부 보호만으로 비디오 비트레이트를 감당할 수 없기 때문에, DVB-T의
+외부 부호를 추가 계층으로 접붙인 것이다.  같은 논문의 M4SMux 제안은
+이 중복 계층을 통합하려 했으나 채택되지 않았고, 상용 수신기는 결국 전체
+외부 체인을 구현해야 한다.
 
 수신기에서는 비터비 내부 FEC 복호와 에너지 디스크램블 이후 MSC 서브채널
 바이트 스트림을 얻는다.  단순한 구현은 즉시 Forney 디인터리버를 가동한

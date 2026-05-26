@@ -330,7 +330,11 @@ to accept environment-variable gain overrides).  Stages 3--7
 (ETI~$\rightarrow$~FIC,
 MSC,~RS+TI,~SL,~AVCC,~H.264~ES) are pure Python.  The final video
 decode is performed by \texttt{dmb-oss} FFmpeg with no run-time
-modifications.}
+modifications.  This block diagram mirrors Figure~3 of
+Lee~et~al.~\cite{lee2004m4smux} (``block diagram of the precedent DMB
+approach''), which depicts the same MSC stream-mode transport of MPEG-2
+TS encapsulating MPEG-4 SL packets that we observe on K8B more than two
+decades later.}
 \label{fig:pipeline}
 \end{figure}
 
@@ -393,7 +397,15 @@ transport-stream packet is first Reed-Solomon encoded into a
 $\alpha=2$, primitive polynomial $0x11d$, FCR$=0$ -- identical to
 DVB-T), and the resulting codeword stream is then byte-wise
 convolutional-interleaved using a Forney scheme with $N=12$ branches
-and depth $M=17$.
+and depth $M=17$.  This is the price the deployed framework pays for
+the two-layer redundancy that Lee~et~al.~\cite{lee2004m4smux} call
+out in 2004 (``duplication of synchronization\ldots\ duplication of
+multiplexing''): once MPEG-4 SL is tunnelled inside MPEG-2 TS inside
+DAB MSC, the inner DAB protection alone is not enough for video
+bit-rates, so DVB-T's outer code is grafted on as an extra layer.
+ETRI's M4SMux proposal in the same paper would have collapsed these
+layers, but it was not adopted; the deployed receivers must therefore
+implement the full outer chain.
 
 At the receiver, after Viterbi inner-FEC decoding and energy
 descrambling we obtain a stream of MSC sub-channel bytes.  A naive
