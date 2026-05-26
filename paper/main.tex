@@ -31,6 +31,7 @@
 \usepackage{xcolor}
 \usepackage{listings}
 \usepackage{tikz}
+\usepackage{pifont}     % ding{51}=check, ding{55}=cross
 \usepackage{hyperref}
 \usepackage{url}
 \usepackage[backend=biber,style=ieee,sorting=none]{biblatex}
@@ -620,12 +621,54 @@ Week & Topic & Deliverable \\
 
 We note that Hwang and Kim~\cite{hwang2015simulator} presented a
 C++ T-DMB frame-analysis simulator targeted at the same
-educational gap in 2015.  The present artefact differs in being
-SDR-based (hence covering RF, antennas, and capture pipelines in
-addition to frame analysis), fully open-source, and end-to-end
-through to a playable video file --- but the pedagogical intent
-is identical and we view our work as a direct successor to that
-effort, eleven years later, made possible by the maturity of
+educational gap in 2015.  Their work used a USB-tethered
+commercial T-DMB receiver board and a Visual C++ dialog application
+to display Ensemble Id, service labels, sub-channel locations
+(start address, size, protection level), and to dump FIC / SubCh
+raw bytes for later inspection.  The pedagogical depth of that
+simulator is, by construction, bounded by what the receiver board
+exposed to its USB host: \emph{the post-decoded Fast Information
+Channel metadata}.  Everything below the FIC --- OFDM
+demodulation, Viterbi inner FEC, Reed-Solomon + convolutional
+deinterleaver outer FEC, MSC sub-channel byte extraction,
+MPEG-2 TS demultiplexing, MPEG-4 SL packet unpacking, H.264 NAL
+parsing, and the video codec itself --- was a black box hidden in
+the board's firmware, inaccessible to a student even in principle.
+Table~\ref{tab:edu-progression} summarises the educational
+coverage gap closed by the present artefact.
+
+\begin{table}[t]
+\centering
+\caption{Pedagogical coverage: Hwang and Kim 2015 vs.\ this work.
+``\ding{55}'' marks layers gated behind closed receiver-board
+firmware in the earlier artefact; ``\ding{51}'' marks layers
+visible and modifiable by the student in the present open-source
+SDR-based artefact.}
+\label{tab:edu-progression}
+\begin{tabular}{lcc}
+\toprule
+Layer / topic                         & Hwang \& Kim 2015 & This work \\
+\midrule
+RF front-end, antennas, capture       & \ding{55}         & \ding{51} \\
+OFDM demodulation                     & \ding{55}         & \ding{51} \\
+Viterbi inner FEC                     & \ding{55}         & \ding{51} \\
+Reed-Solomon + Forney TI outer FEC    & \ding{55}         & \ding{51} \\
+FIC / SI metadata parsing             & \ding{51}         & \ding{51} \\
+MSC sub-channel byte extraction       & \ding{55}         & \ding{51} \\
+MPEG-2 TS / PES / PMT / IOD demux     & \ding{55}         & \ding{51} \\
+MPEG-4 SL packet unpacking            & \ding{55}         & \ding{51} \\
+H.264 NAL parsing, AVCC, decode       & \ding{55}         & \ding{51} \\
+Playable video output                 & \ding{55}         & \ding{51} \\
+Hardware cost                         & \$300+ board      & \$100 SDR + \$10 antenna \\
+Source openness                       & closed firmware   & MIT / CC-BY \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The pedagogical intent of the two efforts is identical; the
+present work pushes the visible / modifiable surface area from
+\emph{one} of the protocol layers (FIC metadata) to \emph{all}
+of them, eleven years later, made possible by the maturity of
 low-cost SDR hardware and the Python scientific stack.
 
 % ====================================================================

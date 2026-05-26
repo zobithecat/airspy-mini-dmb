@@ -24,6 +24,7 @@
 \usepackage{xcolor}
 \usepackage{listings}
 \usepackage{tikz}
+\usepackage{pifont}     % ding{51}=체크, ding{55}=X
 \usepackage{hyperref}
 \usepackage{url}
 \usepackage[backend=biber,style=ieee,sorting=none]{biblatex}
@@ -552,13 +553,50 @@ ETI 파일은 표~\ref{tab:capture-meta}의 스키마를 따르는 JSON 사이�
 \end{table}
 
 Hwang과 Kim~\cite{hwang2015simulator}이 2015년 같은 교육적 빈자리를
-겨냥한 C++ T-DMB 프레임 분석 시뮬레이터를 제시한 바 있다.  본 산출물은
-SDR 기반이라는 점(따라서 프레임 분석에 더해 RF, 안테나, 캡처
-파이프라인까지 다룬다는 점), 완전한 오픈소스라는 점, 그리고 재생
-가능한 비디오 파일까지의 종단간 처리를 다룬다는 점에서 그 선행과
-구분되지만, 교육적 의도는 동일하며, 저렴한 SDR 하드웨어와 Python
-과학 스택의 성숙에 힘입어 11년 뒤에 가능해진 직계 후속작으로
-본 연구를 위치 짓는다.
+겨냥한 C++ T-DMB 프레임 분석 시뮬레이터를 제시한 바 있다.  당시
+연구는 USB로 연결된 상용 T-DMB 수신기 보드와 Visual C++ Dialog
+애플리케이션을 사용하여 앙상블 ID, 서비스 라벨, 서브채널 위치(시작
+주소, 크기, 보호 등급)를 표시하고 FIC / SubCh raw 바이트를 저장하는
+기능을 구현하였다.  해당 시뮬레이터의 교육적 깊이는 \emph{수신기
+보드가 USB 호스트에 노출시키는 사후 디코딩된 빠른정보채널 메타데이터}로
+구조적으로 한정된다.  FIC 아래의 모든 계층 --- OFDM 복조, 비터비
+내부 FEC, RS와 컨볼루셔널 디인터리버를 결합한 외부 FEC, MSC 서브채널
+바이트 추출, MPEG-2 TS 역다중화, MPEG-4 SL 패킷 풀기, H.264 NAL
+파싱, 영상 코덱 자체 --- 는 보드 firmware에 숨겨진 black box이며
+학생이 원리적으로도 접근할 수 없다.  표~\ref{tab:edu-progression}이
+본 산출물이 메우는 교육적 적용 범위 격차를 정리한다.
+
+\begin{table}[t]
+\centering
+\caption{교육적 적용 범위 비교: Hwang and Kim 2015 vs.\ 본 연구.
+``\ding{55}''는 앞선 산출물에서 폐쇄 firmware 뒤에 가려진 계층,
+``\ding{51}''는 본 SDR 기반 오픈소스 산출물에서 학생이 보고
+수정할 수 있는 계층을 나타낸다.}
+\label{tab:edu-progression}
+\begin{tabular}{lcc}
+\toprule
+계층 / 주제                              & Hwang \& Kim 2015 & 본 연구 \\
+\midrule
+RF 프런트엔드, 안테나, 캡처             & \ding{55}         & \ding{51} \\
+OFDM 복조                                & \ding{55}         & \ding{51} \\
+비터비 내부 FEC                          & \ding{55}         & \ding{51} \\
+RS + Forney TI 외부 FEC                  & \ding{55}         & \ding{51} \\
+FIC / SI 메타데이터 파싱                 & \ding{51}         & \ding{51} \\
+MSC 서브채널 바이트 추출                 & \ding{55}         & \ding{51} \\
+MPEG-2 TS / PES / PMT / IOD 역다중화     & \ding{55}         & \ding{51} \\
+MPEG-4 SL 패킷 풀기                      & \ding{55}         & \ding{51} \\
+H.264 NAL 파싱, AVCC, 디코드             & \ding{55}         & \ding{51} \\
+재생 가능한 비디오 출력                  & \ding{55}         & \ding{51} \\
+하드웨어 비용                            & \$300+ 보드       & \$100 SDR + \$10 안테나 \\
+소스 공개성                              & 폐쇄 firmware     & MIT / CC-BY \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+두 연구의 교육적 의도는 동일하다.  본 연구는 학생이 보고·수정할
+수 있는 영역을 한 계층(FIC 메타데이터)에서 \emph{모든} 계층으로
+확장하는 진전을, 저렴한 SDR 하드웨어와 Python 과학 스택의 성숙에
+힘입어, 11년 뒤에 가능하게 한 산출물로 위치 짓는다.
 
 % ====================================================================
 \section{관련 연구}\label{sec:related}
