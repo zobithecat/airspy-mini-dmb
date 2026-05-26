@@ -16,6 +16,7 @@
 \usepackage{cite}
 \usepackage{amsmath,amssymb,amsfonts}
 \usepackage{graphicx}
+\usepackage{subcaption}
 \usepackage{booktabs}
 \usepackage{textcomp}
 \usepackage{xcolor}
@@ -295,9 +296,32 @@ A single command,
 \texttt{python tools/decode\_video.py <capture>.eti
         --out-mp4 video.mp4 --idr-thumbnails /tmp/idr},
 traverses the entire chain and produces a playable MP4 plus
-twenty IDR thumbnails containing recognisable YTN DMB
-home-shopping content (with on-screen Korean text and product
-prices visible).
+twenty IDR thumbnails (Fig.~\ref{fig:idr}) containing
+recognisable YTN DMB home-shopping content with on-screen
+Korean text and product prices.
+
+\begin{figure}[t]
+\centering
+\begin{subfigure}[b]{0.48\columnwidth}
+  \centering
+  \includegraphics[width=\linewidth]{figures/idr_sample_1.png}
+  \caption{}
+\end{subfigure}\hfill
+\begin{subfigure}[b]{0.48\columnwidth}
+  \centering
+  \includegraphics[width=\linewidth]{figures/idr_sample_2.png}
+  \caption{}
+\end{subfigure}
+\caption{Two IDR frames recovered end-to-end from the K8B
+reference capture.  On-screen Korean text identifies YTN DMB
+home-shopping content (\emph{``7일이내 반품가능''} / 7-day
+returns; customer-service phone number; product price
+\emph{``29,900원''}).  Peripheral macroblock errors reflect the
+$\sim$13\,\% of Reed-Solomon blocks above the $t=8$ correction
+limit; FFmpeg error concealment yields spatially-coherent frames
+from the surviving slices.}
+\label{fig:idr}
+\end{figure}
 
 Every capture taken with the bundled \texttt{capture\_logged.py}
 wrapper writes a JSON sidecar recording channel, frequency,

@@ -411,6 +411,34 @@ PPS (4 B):  68 ce 38 80
 Prepending these as Annex-B NAL units to the extracted slice stream
 produces a fully self-contained H.264 byte stream that FFmpeg
 identifies as \texttt{Baseline 320x240 25\,fps yuv420p}.
+Figure~\ref{fig:idr} shows two of the IDR frames recovered from
+the reference capture, demonstrating that the full pipeline
+indeed produces visually-coherent Korean broadcast content.
+
+\begin{figure}[t]
+\centering
+\begin{subfigure}[b]{0.48\linewidth}
+  \centering
+  \includegraphics[width=\linewidth]{figures/idr_sample_1.png}
+  \caption{IDR frame, mid-segment}
+\end{subfigure}\hfill
+\begin{subfigure}[b]{0.48\linewidth}
+  \centering
+  \includegraphics[width=\linewidth]{figures/idr_sample_2.png}
+  \caption{IDR frame, later segment}
+\end{subfigure}
+\caption{Two IDR frames extracted by the end-to-end pipeline from
+the K8B reference capture (\texttt{data/captures/k8b\_100pct.eti}).
+On-screen Korean text identifies the broadcast as YTN DMB
+home-shopping programming: ``\textbf{7일이내 반품가능}''
+(7-day return policy), customer-service phone number, and
+product price ``\textbf{29,900원}''.  Visible macroblock errors at
+the periphery reflect the $\sim$13\,\% of Reed-Solomon blocks that
+exceeded the $t=8$ correction limit (Table~\ref{tab:rs}); FFmpeg's
+error concealment recovers spatially-coherent content from the
+surviving slices.}
+\label{fig:idr}
+\end{figure}
 
 % ====================================================================
 \section{Reproducibility and Metadata}\label{sec:reproducibility}

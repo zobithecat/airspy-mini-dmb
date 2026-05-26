@@ -370,6 +370,32 @@ PPS (4 B):  68 ce 38 80
 이를 Annex-B 형식의 NAL 유닛으로 변환하여 추출된 슬라이스 스트림 앞에
 부가하면, FFmpeg가 \texttt{Baseline 320$\times$240 25\,fps yuv420p}로
 식별하는 완전한 자가완비 H.264 바이트 스트림이 완성된다.
+그림~\ref{fig:idr}은 참조 캡처에서 복원된 IDR 프레임 두 장으로,
+종단간 파이프라인이 실제로 식별 가능한 한국 방송 콘텐츠를 산출함을
+보여 준다.
+
+\begin{figure}[t]
+\centering
+\begin{subfigure}[b]{0.48\linewidth}
+  \centering
+  \includegraphics[width=\linewidth]{figures/idr_sample_1.png}
+  \caption{중반 구간 IDR 프레임}
+\end{subfigure}\hfill
+\begin{subfigure}[b]{0.48\linewidth}
+  \centering
+  \includegraphics[width=\linewidth]{figures/idr_sample_2.png}
+  \caption{후반 구간 IDR 프레임}
+\end{subfigure}
+\caption{본 연구의 종단간 파이프라인이 K8B 참조 캡처
+(\texttt{data/captures/k8b\_100pct.eti})에서 복원한 IDR 프레임
+두 장.  화면 상의 한글 텍스트가 해당 방송이 YTN DMB의 홈쇼핑
+프로그램임을 식별해 준다: ``\textbf{7일이내 반품가능}''(반품 정책),
+고객 센터 전화번호, 그리고 가격 ``\textbf{29,900원}''.  주변부에
+보이는 매크로블록 오류는 정정 능력 $t=8$을 초과한 약 13\,\%의
+리드-솔로몬 블록(표~\ref{tab:rs})에 기인하며, 살아남은 슬라이스로부터
+FFmpeg의 오류 은닉이 공간적으로 일관된 프레임을 복원한다.}
+\label{fig:idr}
+\end{figure}
 
 % ====================================================================
 \section{재현성과 메타데이터}\label{sec:reproducibility}
