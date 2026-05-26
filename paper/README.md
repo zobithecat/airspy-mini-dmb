@@ -36,22 +36,24 @@ Tested with TeX Live 2024 on macOS.  The Korean version needs the
 `kotex` package and a Korean font; both are pre-installed on
 Overleaf and in TeX Live's `texlive-lang-korean` collection.
 
-## Author info to fill in
+## Author info
 
-In `main.tex`:
-
-- Authors are set to **Seonggeun Yoo** (primary, Independent Researcher,
-  Seoul) and **Claude** (Anthropic, AI assistant — see footnote and
-  Author Contributions section for disclosure).
-- Contact email: `orcogre@vendit.co.kr`.
+- Single author: **Seonggeun Yoo** (Independent Researcher, Seoul).
+- AI assistance (Anthropic's Claude) is disclosed in the
+  "Acknowledgement of AI assistance" section near the end of the
+  paper, per arXiv content moderation policy and IEEE/ACM disclosure
+  guidelines.  Claude is **not** listed as a co-author — that would
+  be incompatible with IEEE, ACM, Springer, Nature, and most other
+  publisher policies adopted from 2023 onward.
+- Contact email: `orcogre@gmail.com`.
 - Code & data availability section points to
-  \url{https://github.com/zobithecat/airspy-mini-dmb}.  Make sure that
+  https://github.com/zobithecat/airspy-mini-dmb .  Make sure that
   repository is public and the reference capture / metadata sidecars
-  are uploaded before you click Submit on arXiv.
+  are uploaded before submission.
 
-If you'd prefer a different affiliation for the primary author (e.g.\
-Vendit Inc.\ rather than ``Independent Researcher''), edit the
-\texttt{\textbackslash author} block accordingly.
+If submitting under a corporate affiliation rather than
+"Independent Researcher" (e.g. VENDIT Inc.), edit the `\author`
+block accordingly and obtain employer approval beforehand.
 
 ## Figures
 

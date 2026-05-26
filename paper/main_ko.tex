@@ -56,16 +56,11 @@
        종단간 오픈소스 소프트웨어 수신기}
 
 \author{%
-  유성근\textsuperscript{1}\thanks{교신저자: \texttt{orcogre@vendit.co.kr}} \quad
-  Claude\textsuperscript{2}\thanks{Claude는 Anthropic이 개발한
-    대규모 언어 모델로, 본 연구에서 페어 프로그래밍 및 집필 보조 역할을
-    수행하였다.  구체적으로 한국형 T-DMB의 SL 패킷 헤더 구조 역공학,
-    위상 정렬 외부 FEC의 Python 구현 초안 작성, BIFS 스트림에 임베드된
-    AVC \texttt{DecoderConfigurationRecord} 위치 파악, 본 원고의
-    초기 초안 작성을 담당하였다.  모든 설계 결정, 실험 선택, 최종
-    편집 책임은 제1저자에게 있다.}\\
-  \small\textsuperscript{1}독립 연구자, 대한민국 서울\\
-  \small\textsuperscript{2}Anthropic, 미국 샌프란시스코\\
+  유성근\thanks{교신저자: \texttt{orcogre@gmail.com}.  본 연구에서
+    대규모 언어 모델이 어떤 방식으로 활용되었는지는 본문 말미의
+    ``AI 보조 사용에 관한 명시(Acknowledgement of AI assistance)''
+    절에 상세히 공개한다.}\\
+  \small 독립 연구자, 대한민국 서울\\
 }
 
 \date{\today}
@@ -451,22 +446,56 @@ Python 패키지, 캡처 도구, 참조 ETI 캡처, 디코딩된 IDR 썸네일, 
 배포된다.
 
 \section*{감사의 글}
-Jan van Katwijk(\texttt{eti-stuff}), Albrecht Lohofener 외(\texttt{welle.io}),
-Sungbo Eo와 Saewoong Bahk(\texttt{dmb-oss})의 선행 오픈소스 작업에 의지하고
-있으며, 그 기여에 깊이 감사드린다.
+본 연구는 다음 선행 오픈소스 작업에 깊이 의존하고 있으며, 그 기여에
+감사드린다: Jan van Katwijk의 \texttt{eti-stuff}(OFDM 및 비터비
+백엔드를 소규모 패치를 통해 재사용함), Albrecht Lohofener 외의
+\texttt{welle.io}, 그리고 Sungbo Eo와 Saewoong Bahk의
+\texttt{dmb-oss}.  특히 Eo와 Bahk의 ICTC 2024 논문에서 부수적으로
+언급된 ``디인터리버는 TS 패킷의 동기 바이트를 입력 청크의 첫
+바이트로 받아야 한다''라는 관찰이, 본 연구의 참조 캡처에서 외부
+FEC 성공률을 0\,\%에서 87.3\,\%로 끌어올린 결정적 단서가 되었다.
 
-\section*{저자 기여 및 AI 사용 명시}
-\textbf{유성근}(제1저자)은 프로젝트를 구상하고, 모든 RF 데이터를 캡처하였으며,
-실험과 설계 결정 전반을 주도하였고, 실제 캡처에서 발생한 동기 정렬 실패를
-진단하였으며, 결과를 시각적으로 검증하고 원고를 편집하였다.
-\textbf{Claude}(Anthropic 대규모 언어 모델)는 전 과정에서 페어 프로그래밍과
-초안 작성의 협력자로 참여하였다: Python 구현의 초안을 작성하고, 캡처에
-존재한 원시 바이트 패턴으로부터 한국형 T-DMB SL 패킷 헤더 레이아웃을
-역공학하였으며, BIFS 스트림에 임베드된 AVC
-\texttt{DecoderConfigurationRecord}의 위치를 파악하고, 본 논문의 초기
-초안을 작성하였다.  arXiv의 AI 사용 공개 지침에 따라, 모든 코드, 결과,
-본문은 제출 전 제1저자가 검토하였으며 최종 책임은 제1저자에게 있음을
-명시한다.
+\section*{AI 보조 사용에 관한 명시}
+arXiv 콘텐츠 모더레이션 정책과 IEEE, ACM 및 주요 학술지의 AI 사용
+공개 지침에 따라, 저자는 본 연구 전반에서 대규모 언어 모델(Anthropic의
+Claude)을 페어 프로그래밍 및 집필 보조 도구로 활용하였음을 명시한다.
+구체적으로 본 모델은:
+
+\begin{itemize}[leftmargin=*,nosep]
+\item 저자의 지시에 따라 Python 구현의 상당 부분(특히 동기 바이트
+       정렬 외부 FEC 클래스, SL 패킷 본문 분리기, AVC 설정 레코드
+       검색기)의 초안을 작성하였다;
+\item 캡처된 바이트의 비트 단위 패턴 분석을 수행하였다(예:
+       참조 캡처에 존재하는 3{,}135개 모든 비디오 PES의 첫 바이트가
+       \texttt{0xCF}임을 확인하고 이로부터 9바이트 SL 헤더 레이아웃을
+       유추);
+\item 본 원고와 그 한글 동반본의 초기 초안을 산출하였다.
+\end{itemize}
+
+다음 사항은 모두 저자가 직접 수행하였으며, 본 연구가 성립하기 위한
+필수 조건이었다:
+
+\begin{itemize}[leftmargin=*,nosep]
+\item SDR 하드웨어, 안테나, 캡처 장소의 선정; 모든 RF 측정;
+       GQRX 스펙트럼 및 워터폴 표시의 해석;
+\item 본 연구에 결정적인 참고문헌의 발굴 및 제공.  특히 Section~\ref{sec:rs}의
+       핵심 기여를 가능하게 한 Eo와 Bahk~\cite{eo2024tdmb}의 ICTC
+       논문, 그리고 ETSI 등록 표 문서~\cite{etsi300401};
+\item 모델이 산출한 잘못된 중간 결론들의 식별 및 거부.  기록할 만한
+       사례 둘: 인접한 강한 협대역 간섭 신호(181.797\,MHz)에 의해
+       자기상관 추정이 교란되어 일시적으로 ``DAB 신호 없음''으로 잘못
+       진단한 사례, 그리고 안테나 셋업에 대한 잘못된 전제에서 출발한
+       장시간의 LNA 포화 가설.  각 경우 모두 신호처리, RF, 방송
+       코덱 시스템에 대한 저자의 도메인 지식이 없었다면 잘못된 결론을
+       그대로 받아들였을 것이다;
+\item 디코딩된 H.264 프레임이 식별 가능한 한국 방송 콘텐츠를
+       담고 있음의 시각적 확인(YTN DMB 홈쇼핑 콘텐츠의 한글 자막,
+       전화번호 등) --- 해당 방송에 대한 사전 친숙성 없이는 불가능한
+       인지 행위.
+\end{itemize}
+
+저자는 본 연구의 전반에 대한 책임을 진다.  대규모 언어 모델이 저자가
+아니라는 arXiv, IEEE, ACM의 정책에 동의한다.
 
 % ====================================================================
 \printbibliography

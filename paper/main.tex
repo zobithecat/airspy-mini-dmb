@@ -63,20 +63,11 @@
        Terrestrial DMB on Low-Cost SDR Hardware}
 
 \author{%
-  Seonggeun Yoo\textsuperscript{1}\thanks{Correspondence:
-    \texttt{orcogre@vendit.co.kr}} \quad
-  Claude\textsuperscript{2}\thanks{Claude is a large language model
-    developed by Anthropic.  It contributed to this work as a
-    paired-programming and writing assistant: reverse-engineering
-    the Korean T-DMB SL-packet header structure, drafting the
-    Python implementation of the sync-aligned outer FEC, locating
-    the embedded AVC \texttt{DecoderConfigurationRecord} in the
-    BIFS stream, and producing the initial draft of this manuscript.
-    All design decisions, experimental choices, and final editorial
-    control rest with the primary author.}\\
-  \small\textsuperscript{1}Independent Researcher, Seoul,
-                            Republic of Korea\\
-  \small\textsuperscript{2}Anthropic, San Francisco, USA\\
+  Seonggeun Yoo\thanks{Correspondence:
+    \texttt{orcogre@gmail.com}.  See the Acknowledgement of AI
+    assistance section for a detailed disclosure of how a large
+    language model was used in this work.}\\
+  \small Independent Researcher, Seoul, Republic of Korea\\
 }
 
 \date{\today}
@@ -500,26 +491,64 @@ IDR thumbnails, and this paper's source live at
 the reference RF capture is released under CC-BY-4.0.
 
 \section*{Acknowledgements}
-We rely on, and are grateful for, the prior open-source work of
-Jan van Katwijk (\texttt{eti-stuff}), Albrecht Lohofener et al.\
-(\texttt{welle.io}), and Sungbo Eo and Saewoong Bahk
-(\texttt{dmb-oss}).
+This work rests on prior open-source efforts the author is deeply
+grateful for: Jan van Katwijk's \texttt{eti-stuff} (whose OFDM and
+Viterbi back-end is reused via a small patch), Albrecht Lohofener
+and collaborators' \texttt{welle.io}, and Sungbo Eo and Saewoong
+Bahk's \texttt{dmb-oss}.  The single observation we adapt from
+Eo and Bahk's ICTC 2024 paper --- ``the deinterleaver requires the
+sync byte of a TS packet to be the first in an input byte chunk''
+--- was the decisive insight that lifted the outer-FEC success
+rate from 0 to 87.3\,\% on our reference capture.
 
-\section*{Author contributions and use of AI}
-\textbf{Seonggeun Yoo} (primary author) conceived the project,
-captured all RF data, made every experimental and design decision,
-diagnosed the sync-alignment failure on real captures, validated
-results visually, and edited the manuscript.
-\textbf{Claude} (Anthropic, large language model) acted as a
-paired-programming and drafting collaborator throughout: it wrote
-much of the initial Python implementation, reverse-engineered the
-Korean T-DMB SL-packet header layout from the raw byte patterns
-present in our captures, located the AVC
-\texttt{DecoderConfigurationRecord} embedded in the BIFS stream,
-and produced the first draft of this paper.  Per the arXiv AI
-disclosure guidelines, we emphasise that all code, results, and
-prose were reviewed by the primary author before submission and
-the primary author takes full responsibility for the work.
+\section*{Acknowledgement of AI assistance}
+In line with arXiv content moderation policy and the disclosure
+guidance of IEEE, ACM, and most major journals, the author
+discloses that a large language model (Anthropic's Claude) was
+used as a paired-programming and drafting collaborator throughout
+this project.  Specifically, the model:
+\begin{itemize}[leftmargin=*,nosep]
+\item drafted significant portions of the Python implementation
+      under the author's direction, including the
+      sync-byte-aligned outer FEC class, the SL packet body
+      splitter, and the AVC configuration-record locator;
+\item performed bit-level pattern analysis of captured bytes
+      (e.g.\ confirming that 0xCF appears as the first byte of
+      every 3{,}135 video PES across the reference capture, from
+      which the 9-byte SL header layout was inferred);
+\item produced the initial draft of this manuscript and its
+      Korean companion.
+\end{itemize}
+The following were performed exclusively by the human author and
+were load-bearing for the work to succeed:
+\begin{itemize}[leftmargin=*,nosep]
+\item the choice of SDR hardware, antennas, and capture locations;
+      every RF measurement; and the interpretation of GQRX
+      spectrum plots and waterfall displays;
+\item the curation of references essential to the project, in
+      particular the Eo and Bahk~\cite{eo2024tdmb} ICTC paper
+      whose deinterleaver observation drives the central
+      contribution of Section~\ref{sec:rs}, and the ETSI
+      registered-tables document~\cite{etsi300401};
+\item correction of multiple incorrect intermediate conclusions
+      produced by the model.  Two examples worth recording: a
+      transient ``no DAB signal present'' misdiagnosis that arose
+      because an autocorrelation estimator was confounded by a
+      strong narrowband interferer at 181.797\,MHz adjacent to the
+      target channel, and an extended LNA-saturation hypothesis
+      based on a faulty premise about the antenna setup.  In each
+      case the author's domain knowledge in signal processing,
+      RF, and broadcast codec systems was required to identify and
+      reject the wrong conclusion;
+\item visual verification that the decoded H.264 frames contain
+      recognisable Korean broadcast programming (YTN DMB
+      home-shopping content with on-screen Korean text and a phone
+      number), an act of recognition impossible without familiarity
+      with the broadcast.
+\end{itemize}
+The author takes full responsibility for the work in its entirety
+and concurs with arXiv, IEEE, and ACM policies that a large
+language model is not an author.
 
 % ====================================================================
 \printbibliography
