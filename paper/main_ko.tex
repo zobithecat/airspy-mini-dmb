@@ -97,10 +97,15 @@ YTN DMB(채널 K8B, 183.008\,MHz)의 30\,MB 캡처 파일에 대하여 본 체�
 MPEG-4 Systems 표준이 명시한 객체기술자(OD) 스트림이 아닌
 장면기술/BIFS 스트림에 임베드되어 있다는 사실을 실증적으로 발견하였다.
 소스코드, 참조 캡처, 캡처별 메타데이터 사이드카는 GitHub에 공개되었다.
+공학적 문서화를 넘어, 본 산출물은 한 학기 과제에 DSP, RF, 방송 시스템,
+채널 부호화, 영상 코덱 주제를 통합한 \emph{대학원 수준 term project
+플랫폼}으로서 명시적으로 위치 짓는다.  Hwang과 Kim
+(2015)~\cite{hwang2015simulator}이 제시한 C++ T-DMB 교육용 시뮬레이터의
+SDR 기반·오픈소스 후속작이라 할 수 있다.
 \end{abstract}
 
 \noindent\textbf{핵심어:} 소프트웨어 정의 라디오, T-DMB, DAB, MPEG-4 SL 패킷,
-리드-솔로몬, 컨볼루셔널 인터리버, 오픈소스
+리드-솔로몬, 컨볼루셔널 인터리버, 오픈소스, 공학교육
 
 % ====================================================================
 \section{서론}\label{sec:intro}
@@ -147,30 +152,55 @@ FFmpeg 패치 모음의 형태이며, 그래픽 \texttt{GNU~Radio Companion}을
        \emph{미리 빌드된} 무수정 \texttt{dmb-oss} FFmpeg와 링크).
 \end{enumerate}
 
-\subsection{기여 요약}
+\subsection{범위, 기여, 의도된 독자}
+본 논문은 신호처리 이론이나 T-DMB 표준 자체에 대한 기여가 아니라,
+\emph{공학 및 재현성} 측면의 기여이다.  뒤에 이어지는
+Section~\ref{sec:rs}--\ref{sec:avcc}에서 다루는 개별 요소들 ---
+리드-솔로몬 파라미터, Forney 인터리버 형태, SL 패킷 헤더 레이아웃,
+AVC 디코더 구성 레코드의 위치 --- 은 모두 공개된 표준(ETSI
+TS~102\,427/428~\cite{etsi102427,etsi102428},
+TTAK.KO-07.0026~\cite{ttak0026},
+ISO/IEC 14496-1~\cite{iso14496-1})에 명세되어 있으며, 2003--2007년
+무렵 ETRI 및 협력 산업 연구소에서 한국형 T-DMB를 설계·배치한 엔지니어들
+사이에서 내부적으로 잘 알려져 있던 사실들이다.  T-DMB 하드웨어 디코더
+내부 설계에 익숙한 독자라면, 이어지는 절들의 기술적 내용에서 새로운
+사실을 거의 발견하지 못할 것이다.
+
+본 논문의 기여는 그 \emph{문서화된 동작}을 동시대의 언어·런타임으로
+구현한 단일 라이브러리 형태의 종단간 소프트웨어 산출물로 제공하는 데
+있으며, 더불어 (저자가 아는 한) 공개된 문헌에 선례가 없는 재현성
+스캐폴딩 --- 캡처별 JSON 사이드카, CC-BY로 공개되는 참조 RF 캡처 ---
+을 함께 배포한다는 점에 있다.  구체적으로:
+
 \begin{itemize}[leftmargin=*,nosep]
 \item DVB-T와 동일한 다항식의 $GF(2^8)$ RS(204,188) 코드와 $12\times17$
-       Forney 디인터리버로 구성된 T-DMB 외부 FEC 체인의 순수 Python 구현.
-       FIB CRC가 100\%인 한국 K8B 참조 캡처에서 블록 성공률 87.3\% 달성.
-\item 미보고된 위상 정렬 오류의 규명과 해결책: MSC 바이트 스트림의 임의
-       오프셋부터 디인터리버에 입력하면 TS 동기 바이트(\texttt{0x47})는
-       정상 주기로 출력되나 204바이트 블록 내부 바이트들이 조용히 뒤섞인다.
-       동기 바이트의 실측 위상(우리 캡처에서 204주기 내 오프셋 160)으로
-       선정렬하면 비트 단위로 정확한 디인터리빙이 복원된다.
-\item 한국형 T-DMB 비디오 스트림의 SL 패킷 헤더 레이아웃 역공학:
-       Access Unit 시작 시 9바이트 고정 길이(6비트 플래그 + 33비트 DTS +
-       33비트 CTS), 선두 바이트는 항상 \texttt{0xCF}.  3{,}000여 PES
-       패킷에 대해 검증.
-\item AVC \texttt{DecoderConfigurationRecord}가 비디오 ES의 부트스트랩에
-       필요한 SPS, PPS NAL 유닛을 담는다.  표준 MPEG-4
-       Systems~\cite{iso14496-1}은 이 레코드를 객체기술자 스트림에 싣도록
-       명시하나, 한국형 T-DMB에서는 장면기술(table\_id~\texttt{0x05})
-       섹션 스트림에 임베드되어 있음을 실증적으로 관찰하였다.  바이트 패턴
-       기반의 휴리스틱 검색기를 제공하고 YTN DMB 앙상블에서 동작을 확인하였다.
-\item Overleaf 호환 논문 소스, Python 패키지, 30\,MB 참조 캡처와 메타데이터
-       사이드카, 그리고 해당 캡처로부터 디코딩된 20장의 IDR 썸네일을 함께
-       공개.
+       Forney 디인터리버로 구성된 T-DMB 외부 FEC 체인의 순수 Python
+       구현.  Eo와 Bahk~\cite{eo2024tdmb}가 naive 구현에서 RS 디코딩이
+       실패하는 원인으로 언급한 \emph{동기 바이트 정렬} 경로의 오픈소스
+       구현이라 할 수 있다.  Section~\ref{sec:rs}에서 단일 참조 캡처에
+       대한 0\,\%~$\to$~87.3\,\%의 명확한 before/after 비교를 보고한다.
+\item 한국형 T-DMB 비디오 방송이 사용하는 9바이트 SL 패킷 헤더 레이아웃의
+       문서화·코드화: TTAK.KO-07.0026과 ISO/IEC 14496-1에 부합하며,
+       3{,}000여 PES 패킷에 대해 검증.
+\item AVC \texttt{DecoderConfigurationRecord}의 오픈소스 검색기·파서.
+       표준 MPEG-4 Systems~\cite{iso14496-1} 예시에서는 객체기술자
+       (\texttt{tid}=\texttt{0x04}) 스트림에 운반되지만, 한국형 T-DMB
+       멀티플렉서는 이를 장면기술 (\texttt{tid}=\texttt{0x05})
+       섹션 스트림 안에 임베드한다.
+\item Overleaf 호환 논문 소스 (한글 번역 포함), Python 패키지,
+       30\,MB 참조 캡처와 메타데이터 사이드카, 그리고 해당 캡처에서
+       디코딩된 20장의 IDR 썸네일 공개.
+\item DSP, RF, 방송, 채널 부호화, 영상 코덱을 한 hands-on 과제에
+       통합한 대학원 수준 term project 산출물
+       (Section~\ref{sec:education}).
 \end{itemize}
+
+따라서 본 논문의 주 독자는 새로운 신호처리 결과를 찾는 연구자가 아니라
+다음과 같다: (i)~상용 시험 장비 없이 작동하는 T-DMB 수신 체인을
+종단간으로 학습·확장하고자 하는 엔지니어와 학생; (ii)~신호처리·통신·
+방송 대학원 과목에 통합 hands-on 프로젝트를 도입하고자 하는 교수자;
+(iii)~지금까지 한국형 T-DMB의 라이브러리 형태 수신기를 갖지 못했던
+오픈소스 SDR 커뮤니티 전반.
 
 % ====================================================================
 \section{시스템 개요}\label{sec:system}
@@ -467,6 +497,68 @@ FIB 성공률            & 100\,\% \\
 ETI 파일은 표~\ref{tab:capture-meta}의 스키마를 따르는 JSON 사이드카를
 함께 출력한다.  본 논문에 동봉된 참조 캡처에 대해서도 빌드 기록을 토대로
 사후 사이드카를 작성하였다.
+
+% ====================================================================
+\section{대학원 term project 산출물로서의 활용}\label{sec:education}
+
+본 산출물은 신호처리·통신·방송 분야 학부 고학년 또는 대학원 1--2학기
+과목의 \emph{term project 플랫폼}으로 보는 것이 가장 적절하다고
+저자는 판단한다.  본 코드베이스 위에 구성한 8주 분량의 단일
+프로젝트가 학생에게 노출시키는 영역은 대략 다음과 같다 (주당 1
+학점 분량):
+
+\begin{itemize}[leftmargin=*,nosep]
+\item \textbf{DSP:} 표본화 정리, 데시메이션, 안티-에일리어스 필터링,
+       FFT 기반 스펙트럼 해석, OFDM 부반송파와 순환 전치(CP).
+\item \textbf{RF 및 SDR:} R820T2의 LNA / mixer / VGA 이득 단계,
+       잡음 지수, bias-tee, 하드웨어 AGC, 안테나 이론(folded
+       dipole, Yagi, VSWR).
+\item \textbf{채널 부호화:} CRC-16, 비터비 내부 FEC, $GF(2^8)$ 위의
+       리드-솔로몬 (204,188), Forney 컨볼루셔널 시간 인터리버.
+\item \textbf{방송 시스템:} DAB Mode~I OFDM 프레임 구조, FIC / MSC
+       분할, 앙상블 / 서비스 / 서브채널 계층, EEP 부호화 프로파일.
+\item \textbf{코덱과 컨테이너:} MPEG-2 TS, PES, PMT, IOD, MPEG-4 SL
+       패킷, H.264 NAL 유닛, SPS/PPS, AVCC 대 Annex-B.
+\item \textbf{소프트웨어 공학:} Python 패키징, CLI 도구 설계, 구조화
+       로깅(메타데이터 사이드카), 참조 데이터의 Git LFS 운용, MIT
+       및 CC-BY 라이선스.
+\end{itemize}
+
+제안하는 8주 프로젝트 구성을 표~\ref{tab:syllabus}에 정리하였다.
+학생 1인당 하드웨어 비용은 약 \$120 (Airspy~Mini \$100, 안테나 자재
+\$10--20)이며, 코드베이스는 GPU 없이 일반 macOS / Linux 노트북에서
+동작이 확인되어 있다.  8주차의 안테나 제작은 hands-on RF로의 자연스러운
+확장이며, 실측 VSWR과 학생 자작 안테나로 달성한 채널 잠금률을 표
+\ref{tab:capture-meta}의 참조 실내 안테나 대비로 평가하여 채점할 수 있다.
+
+\begin{table}[t]
+\centering
+\caption{본 산출물 위에 구성한 8주 term project 권장 구성안.}
+\label{tab:syllabus}
+\begin{tabular}{rlp{4.6cm}}
+\toprule
+주차 & 주제 & 산출물 \\
+\midrule
+1 & SDR 셋업 + 스펙트럼 탐색       & GQRX 세션 캡처 \\
+2 & I/Q 캡처 + OFDM 기초           & 세 채널 1초 I/Q \\
+3 & ETI 파싱 + FIC 디코딩          & 앙상블 라벨 출력 \\
+4 & RS + Forney 디인터리버         & sync 정렬 \emph{재유도} \\
+5 & MSC 추출 + SL 역다중화         & 서비스별 TS 패킷 \\
+6 & H.264 NAL + AVCC 위치          & 단일 IDR 디코드 \\
+7 & ffmpeg 통합                    & 재생 가능 MP4 \\
+8 & 안테나 설계·제작                & 자작 안테나 실행 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Hwang과 Kim~\cite{hwang2015simulator}이 2015년 같은 교육적 빈자리를
+겨냥한 C++ T-DMB 프레임 분석 시뮬레이터를 제시한 바 있다.  본 산출물은
+SDR 기반이라는 점(따라서 프레임 분석에 더해 RF, 안테나, 캡처
+파이프라인까지 다룬다는 점), 완전한 오픈소스라는 점, 그리고 재생
+가능한 비디오 파일까지의 종단간 처리를 다룬다는 점에서 그 선행과
+구분되지만, 교육적 의도는 동일하며, 저렴한 SDR 하드웨어와 Python
+과학 스택의 성숙에 힘입어 11년 뒤에 가능해진 직계 후속작으로
+본 연구를 위치 짓는다.
 
 % ====================================================================
 \section{관련 연구}\label{sec:related}

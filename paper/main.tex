@@ -104,12 +104,17 @@ discovery that the AVC \texttt{DecoderConfigurationRecord} in Korean
 T-DMB broadcasts is embedded inside the Scene-Description / BIFS stream
 rather than the Object-Descriptor stream as MPEG-4 Systems would suggest.
 The code, captures, and per-capture metadata sidecars are released on
-GitHub.
+GitHub.  Beyond the engineering documentation, we explicitly position
+the artefact as a graduate-level term project that, in one assignment,
+integrates DSP, RF, broadcasting systems, channel coding, and video
+codec topics --- the open-source SDR-based successor to the C++
+T-DMB educational simulator of Hwang and Kim
+(2015)~\cite{hwang2015simulator}.
 \end{abstract}
 
 \noindent\textbf{Keywords:}
 Software-defined radio, T-DMB, DAB, MPEG-4 SL packets, Reed-Solomon,
-convolutional interleaver, open source.
+convolutional interleaver, open source, engineering education.
 
 % ====================================================================
 \section{Introduction}\label{sec:intro}
@@ -161,34 +166,70 @@ This paper describes an independent re-implementation with three goals:
        H.264~/~BSAC decode).
 \end{enumerate}
 
-\subsection{Contributions}
+\subsection{Scope, contributions, and intended audience}
+This paper is an \emph{engineering and reproducibility} contribution
+rather than a contribution to signal-processing theory or to the
+T-DMB standard itself.  Every individual element documented in
+Sections~\ref{sec:rs}--\ref{sec:avcc} below --- the Reed-Solomon
+parameters, the Forney interleaver geometry, the SL packet header
+layout, the location of the AVC decoder configuration record ---
+is fully specified by publicly-available standards (ETSI
+TS~102\,427/428~\cite{etsi102427,etsi102428},
+TTAK.KO-07.0026~\cite{ttak0026}, ISO/IEC 14496-1~\cite{iso14496-1})
+and was known internally to the engineers who designed and
+deployed Korean T-DMB at ETRI and partner industry laboratories
+around 2003--2007.  A reader familiar with the inside of a T-DMB
+hardware decoder will find few technical surprises in the
+sections that follow.
+
+The contribution of this paper is to make that documented
+behaviour available as a single, library-form, end-to-end software
+artefact in a contemporary language and runtime --- and to ship it
+with reproducibility scaffolding (per-capture JSON sidecars, a
+public reference RF capture released under CC-BY) that to the best
+of our knowledge has not been previously released in the open
+literature.  Concretely:
+
 \begin{itemize}[leftmargin=*,nosep]
 \item A pure-Python implementation of the T-DMB outer FEC chain
       (RS(204,188) over $GF(2^8)$ with DVB-T polynomial plus a
       $12\times17$ Forney deinterleaver) that achieves 87.3\% block
       success on a reference Korean K8B capture with FIB CRC 100\%.
-\item Identification of, and a fix for, a subtle phase-alignment issue:
-      feeding the deinterleaver from an arbitrary offset of the MSC
-      byte stream silently scrambles every 204-byte block even though
-      the TS sync byte~(\texttt{0x47}) remains at the correct
-      cadence.  Pre-aligning to the empirically-determined sync byte
-      offset (160 within the 204-byte cycle on our captures) restores
-      bit-exact deinterleaving.
-\item A reverse-engineered SL packet header layout for the Korean
-      T-DMB video stream (a fixed 9-byte header per Access Unit:
-      6-bit flags, 33-bit DTS, 33-bit CTS, leading flag byte
-      \texttt{0xCF}) verified against \(>\,3000\) PES packets.
-\item Empirical observation that the AVC \texttt{DecoderConfigurationRecord}
-      for the video elementary stream is carried in the Scene-Description
-      (table\_id~\texttt{0x05}) section stream rather than the
-      Object-Descriptor (table\_id~\texttt{0x04}) stream used by the
-      reference MPEG-4 Systems specification~\cite{iso14496-1}.  We
-      provide a heuristic locator and confirm it on the YTN DMB
-      ensemble.
-\item Release of an Overleaf-ready paper source, a Python package, a
-      30\,MB reference capture with its metadata sidecar, and twenty
-      decoded IDR thumbnails from said capture.
+\item An open-source Python implementation of the sync-byte-aligned
+      Forney deinterleaver path noted by Eo and
+      Bahk~\cite{eo2024tdmb} as the cause of failed RS decoding in
+      naive implementations.  Section~\ref{sec:rs} reports a clean
+      0\% $\to$ 87.3\% before/after comparison on a single reference
+      capture.
+\item A documented, code-form derivation of the 9-byte SL packet
+      header layout used by Korean T-DMB video broadcasters,
+      matching TTAK.KO-07.0026 and ISO/IEC 14496-1 and verified
+      against $>$3000 PES packets.
+\item An open-source locator and parser for the AVC
+      \texttt{DecoderConfigurationRecord}, which Korean T-DMB
+      multiplexers embed inside the Scene-Description
+      (\texttt{tid}=\texttt{0x05}) section stream rather than the
+      Object-Descriptor (\texttt{tid}=\texttt{0x04}) stream used
+      in the reference MPEG-4 Systems
+      examples~\cite{iso14496-1}.
+\item Release of an Overleaf-ready paper source (including a
+      Korean translation), the Python package, a 30\,MB reference
+      capture with its metadata sidecar, and twenty decoded IDR
+      thumbnails from that capture.
+\item A turnkey graduate-level term-project artefact that
+      integrates DSP, RF, broadcasting, channel coding, and codec
+      topics into a single hands-on assignment
+      (Section~\ref{sec:education}).
 \end{itemize}
+
+The primary intended audience is therefore not researchers
+seeking novel signal-processing results, but: (i)~engineers and
+students who want to study or extend a working T-DMB receive
+chain end-to-end without commercial test equipment;
+(ii)~educators looking for an integrated hands-on project for a
+graduate-level signals / communications / broadcasting course;
+and (iii)~the broader open-source SDR community, for whom Korean
+T-DMB has until now had no library-form receiver.
 
 % ====================================================================
 \section{System Overview}\label{sec:system}
@@ -514,6 +555,78 @@ Every capture taken with the bundled \texttt{tools/capture\_logged.py}
 wrapper produces a JSON sidecar with the schema illustrated in
 Table~\ref{tab:capture-meta}.  The reference captures shipped with the
 artefact have been retro-fitted with sidecars from build-system records.
+
+% ====================================================================
+\section{Use as a graduate-level term project}\label{sec:education}
+
+The complete artefact is, in our view, best understood as a
+term-project platform for upper-undergraduate or first-year
+graduate courses in signal processing, communications, or
+broadcasting systems.  A single eight-week project built on this
+codebase exposes a student to, in approximately one credit hour
+per week:
+
+\begin{itemize}[leftmargin=*,nosep]
+\item \textbf{DSP:} sampling theorem, decimation, anti-alias
+      filtering, FFT-based spectrum analysis, OFDM carriers and
+      cyclic prefix.
+\item \textbf{RF and SDR:} R820T2 LNA / mixer / VGA gain stages,
+      noise figure, bias-tee, hardware AGC, antenna theory
+      (folded dipole, Yagi, VSWR).
+\item \textbf{Channel coding:} CRC-16, Viterbi inner FEC,
+      Reed-Solomon (204,188) over $GF(2^8)$, Forney convolutional
+      time interleaver.
+\item \textbf{Broadcasting systems:} DAB Mode~I OFDM frame
+      structure, FIC / MSC partitioning, ensemble / service /
+      sub-channel hierarchy, EEP coding profiles.
+\item \textbf{Codecs and containers:} MPEG-2 TS, PES, PMT, IOD,
+      MPEG-4 SL packets, H.264 NAL units, SPS/PPS, AVCC vs
+      Annex-B.
+\item \textbf{Software engineering:} Python packaging, CLI tool
+      design, structured logging (metadata sidecars), Git LFS for
+      reference data, MIT/CC-BY licensing.
+\end{itemize}
+
+A suggested eight-week project structure is shown in
+Table~\ref{tab:syllabus}.  Per-student hardware cost is
+$\approx\,\$120$ (Airspy~Mini \$100, antenna materials \$10--20)
+and the codebase has been verified to run on consumer macOS and
+Linux laptops without GPU.  Antenna construction (week 8)
+provides a natural extension into hands-on RF and is graded on
+measured VSWR plus the channel-lock rate achieved with the
+student-built antenna against the reference indoor antenna of
+Table~\ref{tab:capture-meta}.
+
+\begin{table}[t]
+\centering
+\caption{Suggested eight-week term-project structure built on this
+artefact.}
+\label{tab:syllabus}
+\begin{tabular}{rlp{4.3cm}}
+\toprule
+Week & Topic & Deliverable \\
+\midrule
+1 & SDR setup + spectrum exploration  & GQRX session capture \\
+2 & I/Q capture + OFDM background     & 1\,s I/Q at three channels \\
+3 & ETI parsing + FIC decoding        & Ensemble label printed \\
+4 & RS + Forney deinterleaver         & \emph{Re-derive} sync fix \\
+5 & MSC extraction + SL demux         & TS packets per service \\
+6 & H.264 NAL + AVCC location         & Single decoded IDR \\
+7 & ffmpeg integration                & Playable MP4 \\
+8 & Antenna design + build            & Self-built antenna run \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+We note that Hwang and Kim~\cite{hwang2015simulator} presented a
+C++ T-DMB frame-analysis simulator targeted at the same
+educational gap in 2015.  The present artefact differs in being
+SDR-based (hence covering RF, antennas, and capture pipelines in
+addition to frame analysis), fully open-source, and end-to-end
+through to a playable video file --- but the pedagogical intent
+is identical and we view our work as a direct successor to that
+effort, eleven years later, made possible by the maturity of
+low-cost SDR hardware and the Python scientific stack.
 
 % ====================================================================
 \section{Related work}\label{sec:related}

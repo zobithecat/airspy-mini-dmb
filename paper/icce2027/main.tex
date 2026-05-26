@@ -345,16 +345,30 @@ sample rate, gain stages, bias-tee, antenna model, and location
 captures and antenna setups.
 
 % ====================================================================
-\section{Conclusion}
+\section{Conclusion and Educational Use}
 
 We presented the first packaged end-to-end open-source software
 receiver for Korean Terrestrial DMB.  Two implementation lessons
 worth recording for follow-on work: align the Forney
 deinterleaver to the TS sync byte \emph{before} processing, and
 look for the H.264 AVCC inside the BIFS rather than the
-object-descriptor section stream.  All code, the reference
-capture, twenty decoded IDR thumbnails, and the LaTeX source of
-this paper are released at
+object-descriptor section stream.
+
+Beyond the engineering documentation, we explicitly position the
+artefact as a graduate-level term-project platform.  A single
+eight-week project built on this codebase integrates DSP
+(sampling, FFT, OFDM), RF and SDR hardware (R820T2 gain stages,
+antenna design, VSWR), channel coding (CRC, Viterbi, RS,
+convolutional interleaver), broadcasting (DAB frame structure,
+FIC/MSC), codecs (H.264 NAL, SL packets, MPEG-2 TS) and
+software-engineering practice (Python packaging, Git LFS,
+licensing) into one assignment, at a per-student hardware cost
+of $\approx\,\$120$.  We view our work as the SDR-based,
+open-source successor to the educational T-DMB frame-analysis
+simulator of Hwang and Kim~\cite{hwang2015simulator}.
+
+All code, the reference capture, twenty decoded IDR thumbnails,
+and the LaTeX source of this paper are released at
 \url{https://github.com/zobithecat/airspy-mini-dmb} (MIT and
 CC-BY-4.0).
 
