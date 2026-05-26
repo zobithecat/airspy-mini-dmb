@@ -98,12 +98,16 @@ on-air capture of YTN DMB (channel K8B, 183.008\,MHz) using an
 Airspy~Mini~\cite{airspy} and a consumer indoor antenna: 87.3\% of
 Reed-Solomon blocks decode cleanly, every SL packet header parses, and
 ffmpeg renders QVGA H.264 Baseline video frames containing recognisable
-Korean broadcast content.  We identify and fix a previously unreported
-synchronisation bug that prevented the conventional ``deinterleave-then-find-sync''
-ordering from converging on real captures, and we document an empirical
-discovery that the AVC \texttt{DecoderConfigurationRecord} in Korean
-T-DMB broadcasts is embedded inside the Scene-Description / BIFS stream
-rather than the Object-Descriptor stream as MPEG-4 Systems would suggest.
+Korean broadcast content.  We document, in code, the
+sync-byte-aligned deinterleaver path that the conventional
+``deinterleave-then-find-sync'' ordering fails to recover, and we
+record an empirical observation that the YTN DMB multiplex on K8B
+embeds the AVC \texttt{DecoderConfigurationRecord} inside the
+Scene-Description / BIFS stream rather than the
+Object-Descriptor stream used in the reference MPEG-4 Systems
+examples --- an operator configuration choice permitted by
+TS~102\,428 and already catalogued by ETRI in
+2004~\cite{lee2004m4smux}.
 The code, captures, and per-capture metadata sidecars are released on
 GitHub.  Beyond the engineering documentation, we explicitly position
 the artefact as a graduate-level term project that, in one assignment,
@@ -176,20 +180,34 @@ parameters, the Forney interleaver geometry, the SL packet header
 layout, the location of the AVC decoder configuration record ---
 is fully specified by publicly-available standards (ETSI
 TS~102\,427/428~\cite{etsi102427,etsi102428},
-TTAK.KO-07.0026~\cite{ttak0026}, ISO/IEC 14496-1~\cite{iso14496-1})
-and was known internally to the engineers who designed and
-deployed Korean T-DMB at ETRI and partner industry laboratories
-around 2003--2007.  A reader familiar with the inside of a T-DMB
-hardware decoder will find few technical surprises in the
-sections that follow.
+TTAK.KO-07.0026~\cite{ttak0026}, ISO/IEC
+14496-1~\cite{iso14496-1}, ISO/IEC 13818-1
+Amendment~7~\cite{iso13818-1-amd7}) and was already catalogued
+in 2004 by ETRI~\cite{lee2004m4smux}, whose paper enumerates
+exactly the ``MPEG-2 TS + MPEG-4 SL per ISO/IEC 13818-1 Amendment
+7'' path that the deployed Korean T-DMB stack uses today (and an
+unadopted alternative multiplexer, M4SMux, in the same paper).
+A reader who already has access to the engineering documents
+behind a T-DMB hardware decoder, or who has read
+Lee~et~al.~\cite{lee2004m4smux} carefully, will find few
+technical surprises in the sections that follow.
 
-The contribution of this paper is to make that documented
-behaviour available as a single, library-form, end-to-end software
-artefact in a contemporary language and runtime --- and to ship it
-with reproducibility scaffolding (per-capture JSON sidecars, a
-public reference RF capture released under CC-BY) that to the best
-of our knowledge has not been previously released in the open
-literature.  Concretely:
+The contribution of this paper is twofold.  First, we made the
+deployed receive chain available as a single, library-form,
+end-to-end software artefact in a contemporary language and
+runtime, with reproducibility scaffolding (per-capture JSON
+sidecars, a public reference RF capture released under CC-BY) that
+to the best of our knowledge has not been previously released in
+the open literature.  Second, we did this in a \emph{black-box}
+posture --- treating Korean T-DMB as an unannotated bitstream and
+deriving every layer empirically from a single 30\,MB on-air
+capture --- and along the way independently rediscovered several
+operator-specific deployment choices that are documented in the
+Korean-language ETRI literature but not, to our knowledge, in
+English.  This black-box angle is what makes the artefact
+educationally useful (Section~\ref{sec:education}): a student can
+walk the same path without prior access to the standards
+ecosystem.  Concretely:
 
 \begin{itemize}[leftmargin=*,nosep]
 \item A pure-Python implementation of the T-DMB outer FEC chain
@@ -203,17 +221,30 @@ literature.  Concretely:
       naive implementations.  Section~\ref{sec:rs} reports a clean
       0\% $\to$ 87.3\% before/after comparison on a single reference
       capture.
-\item A documented, code-form derivation of the 9-byte SL packet
-      header layout used by Korean T-DMB video broadcasters,
-      matching TTAK.KO-07.0026 and ISO/IEC 14496-1 and verified
-      against $>$3000 PES packets.
+\item An empirical, code-form re-derivation of the specific
+      MPEG-4~Systems SLConfigDescriptor profile that Korean
+      operators have settled on
+      (\texttt{useAccessUnitStartFlag}=1, \texttt{useAccessUnitEndFlag}=1,
+      \texttt{useTimeStampsFlag}=1,
+      \texttt{timeStampLength}=33,
+      \texttt{accessUnitDuration}=0), under which every SL packet
+      header is exactly 9 bytes with byte~0 fixed at \texttt{0xCF}.
+      This profile is permitted by ISO/IEC
+      14496-1~\cite{iso14496-1} and matches the framework
+      catalogued by Lee~et~al.~\cite{lee2004m4smux}; what we
+      contribute is a verified ${>}3000$-PES black-box
+      reconstruction of the exact field values, which to our
+      knowledge has not been published in English.
 \item An open-source locator and parser for the AVC
-      \texttt{DecoderConfigurationRecord}, which Korean T-DMB
-      multiplexers embed inside the Scene-Description
+      \texttt{DecoderConfigurationRecord}, which the YTN DMB
+      multiplex on K8B embeds inside the Scene-Description
       (\texttt{tid}=\texttt{0x05}) section stream rather than the
       Object-Descriptor (\texttt{tid}=\texttt{0x04}) stream used
       in the reference MPEG-4 Systems
-      examples~\cite{iso14496-1}.
+      examples~\cite{iso14496-1}.  This is an operator
+      configuration choice permitted by TS~102\,428's allowance
+      of stream-type restrictions~\cite{etsi102428}, not a
+      standards deviation.
 \item Release of an Overleaf-ready paper source (including a
       Korean translation), the Python package, a 30\,MB reference
       capture with its metadata sidecar, and twenty decoded IDR
@@ -221,7 +252,11 @@ literature.  Concretely:
 \item A turnkey graduate-level term-project artefact that
       integrates DSP, RF, broadcasting, channel coding, and codec
       topics into a single hands-on assignment
-      (Section~\ref{sec:education}).
+      (Section~\ref{sec:education}).  Note that the educational
+      value flows directly from the black-box framing: the project
+      is interesting precisely because the standards are publicly
+      available but the deployment specifics
+      (cf.~\cite{lee2004m4smux}) require empirical reconstruction.
 \end{itemize}
 
 The primary intended audience is therefore not researchers
@@ -406,9 +441,14 @@ The transport stream emerging from the RS decoder carries four logical
 PIDs (Table~\ref{tab:pids}).  PID~\texttt{0x113} contains the video
 elementary stream packetised first into MPEG-4 SL packets and then
 into MPEG-2 PES with \texttt{stream\_id} = \texttt{0xFA}
-(``MPEG-4 SL-packetised stream'').  Each PES carries exactly one SL
-packet, and each SL packet contains exactly one H.264 NAL unit
-(without start-code prefix).
+(``MPEG-4 SL-packetised stream''), per ISO/IEC 13818-1 Amendment
+7~\cite{iso13818-1-amd7}.  Lee~et~al.~\cite{lee2004m4smux} document
+this same encapsulation as the ``new DMB approach using the MPEG-4
+system'' that was being researched at ETRI at the time and
+ultimately won out over their proposed M4SMux alternative.
+Each PES on PID~\texttt{0x113} carries exactly one SL packet, and
+each SL packet contains exactly one H.264 NAL unit (without
+start-code prefix).
 
 \begin{table}[t]
 \centering
@@ -430,10 +470,19 @@ PID & Carried stream & Packet count in 2 min \\
 
 \subsection{SL header layout}
 
-Reading the ISO/IEC 14496-1 specification of
-\texttt{SLPacketHeader()} \cite{iso14496-1} along with the FFmpeg
-\texttt{read\_sl\_header()} implementation in \texttt{dmb-oss}, the
-maximum-length AU-start header for the Korean T-DMB profile contains:
+ISO/IEC 14496-1~\cite{iso14496-1} defines \texttt{SLPacketHeader()}
+as a generic syntax whose actual on-wire fields are governed by a
+per-stream \texttt{SLConfigDescriptor}.  In a black-box setting we
+do not see the \texttt{SLConfigDescriptor} directly (it would arrive
+in the Initial Object Descriptor; we recover the IOD only
+indirectly through trial parsing), so we instead solve for the
+profile that makes the bitstream consistent.  Combining
+ISO/IEC~14496-1's degrees of freedom with the FFmpeg
+\texttt{read\_sl\_header()} implementation in \texttt{dmb-oss} and
+the framework catalogue in
+Lee~et~al.~\cite{lee2004m4smux}, the maximum-length AU-start
+header for an SL packet carrying a 33-bit DTS and a 33-bit CTS
+contains:
 
 \begin{align*}
 \text{header bits} \;=\; & 1 \;(\text{au\_start}) + 1 \;(\text{au\_end}) + 1 \;(\text{padding}) + \\
@@ -448,7 +497,20 @@ packets in our reference capture: each PES body starts with the byte
 \{au\_start,au\_end\}=\{1,1\}, \{padding,rand\_acc\_pt\}=\{0,0\},
 \{dts\_flag,cts\_flag\}=\{1,1\}, plus two high bits of DTS), followed
 by 8 more bytes of timestamp fields, after which byte~9 is the NAL
-header of a single H.264 NAL unit.
+header of a single H.264 NAL unit.  The implied
+\texttt{SLConfigDescriptor} is therefore
+\texttt{useAccessUnitStartFlag}=1, \texttt{useAccessUnitEndFlag}=1,
+\texttt{useTimeStampsFlag}=1,
+\texttt{timeStampLength}=33,
+\texttt{accessUnitDuration}=0.  This is a standards-compliant
+operator choice rather than a deviation: every SL packet in the
+video PID is a single complete access unit with both timestamps
+explicit, which is the simplest interpretation Korean operators
+could have picked and is consistent with the
+ISO/IEC 13818-1 Amendment 7 path catalogued at ETRI in
+2004~\cite{lee2004m4smux}.  What we contribute is the empirical
+${>}3000$-PES verification of the exact field
+values, which to our knowledge has not been published in English.
 
 \subsection{NAL stream}
 
@@ -464,15 +526,25 @@ AVCC-style storage where decoder configuration is carried out-of-band.
 \section{Locating the AVC Decoder Configuration Record}
 \label{sec:avcc}
 
-In standard MPEG-4 Systems, the H.264 \texttt{AVCDecoderConfigurationRecord}
-(which contains the SPS and PPS NAL units required to bootstrap the
-decoder) is transported inside the Object-Descriptor stream as part of a
-\texttt{DecoderSpecificInfo} descriptor~\cite{iso14496-1}.  In the YTN
-DMB capture we observe the opposite: the OD-stream sections on
-PID~\texttt{0x111} contain only DMB-private commands with user-defined
-tags (\texttt{0xC0}--\texttt{0xFE}, the ``Annex K user-private'' range);
-the actual AVCC bytes appear inside the Scene-Description /
-BIFS section stream on PID~\texttt{0x112}.
+In the reference MPEG-4 Systems examples given by ISO/IEC
+14496-1~\cite{iso14496-1}, the H.264
+\texttt{AVCDecoderConfigurationRecord} (which contains the SPS and
+PPS NAL units required to bootstrap the decoder) is transported
+inside the Object-Descriptor stream as part of a
+\texttt{DecoderSpecificInfo} descriptor.  In the YTN DMB capture we
+observe the opposite: the OD-stream sections on PID~\texttt{0x111}
+contain only DMB-private commands with user-defined tags
+(\texttt{0xC0}--\texttt{0xFE}, the ``Annex K user-private'' range);
+the actual AVCC bytes appear inside the Scene-Description / BIFS
+section stream on PID~\texttt{0x112}.  This is an operator
+configuration choice, not a standards deviation: ETSI TS~102\,428
+\cite{etsi102428} explicitly permits stream-type restrictions in
+the DMB video-service profile, and the catalogue of permitted
+descriptor placements in
+Lee~et~al.~\cite{lee2004m4smux} is broad enough to accommodate it.
+Without access to the operator's IOD ahead of time, however, a
+clean-room decoder cannot infer the location from the standards
+alone, and must locate the record by content.
 
 Our locator scans the SD-stream byte stream for the AVCC signature
 $$\texttt{01}\;\langle\textit{profile}\rangle\;\langle\textit{compat}\rangle

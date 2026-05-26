@@ -74,12 +74,16 @@ final decoding to an unmodified \texttt{dmb-oss} FFmpeg.  On a
 outer FEC recovers 87.3\% of Reed-Solomon blocks; every SL header
 parses; and ffmpeg renders QVGA H.264 Baseline frames containing
 recognisable Korean broadcast content.  We report two
-implementation findings worth documenting: (i)~the Forney
-deinterleaver must be aligned to the TS sync byte \emph{before}
-processing, not after, and (ii)~Korean broadcasters embed the AVC
-\texttt{DecoderConfigurationRecord} inside the BIFS / scene-
-description stream rather than the object-descriptor stream that
-MPEG-4 Systems prescribes.  Source code, the reference RF capture,
+implementation observations worth documenting in English: (i)~the
+Forney deinterleaver must be aligned to the TS sync byte
+\emph{before} processing, not after, and (ii)~the YTN DMB
+multiplex embeds the AVC \texttt{DecoderConfigurationRecord}
+inside the BIFS / scene-description stream rather than the
+object-descriptor stream used in the reference MPEG-4 Systems
+examples.  Neither is a standards deviation, and both were
+internally known to ETRI engineers at the time of T-DMB
+deployment~\cite{lee2004m4smux}; the contribution is making them
+available in open source.  Source code, the reference RF capture,
 and per-capture metadata sidecars are released under MIT~/~CC-BY.
 \end{abstract}
 
@@ -105,22 +109,37 @@ FFmpeg fork, but their artefact is a GNU~Radio flowgraph plus
 out-of-tree patches; it has not been packaged for headless or
 library use.
 
-This paper contributes:
+The standards required to build such a receiver are public
+(ETSI TS~102\,427/428~\cite{etsi102427,etsi102428},
+ISO/IEC~14496-1, ISO/IEC 13818-1 Amendment~7), and the deployed
+encapsulation path was catalogued in Korean by Lee~et~al.\ at
+ETRI in 2004~\cite{lee2004m4smux}.  The contribution of this paper
+is therefore an engineering rather than a discovery one: a single
+black-box reconstruction of the deployed receive chain that, to
+our knowledge, has not previously been released in English-language
+open source.  Concretely:
 
 \begin{itemize}
 \item A pure-Python implementation of the full T-DMB outer FEC
       chain that achieves 87.3\% Reed-Solomon block success on a
       reference Korean K8B capture, replicable in under a minute
       on a laptop.
-\item Identification and a one-shot fix for a sync-alignment
-      pitfall that silently scrambles deinterleaved output even
-      while preserving the TS sync byte cadence.
-\item A reverse-engineered 9-byte SL packet header layout for
-      the Korean T-DMB video stream, verified against
-      \(>\,3{,}000\) on-air PES packets.
-\item Empirical observation that the AVC decoder configuration
-      record is carried in the BIFS section stream rather than the
-      object-descriptor stream as MPEG-4 Systems would prescribe.
+\item A code-form implementation of the sync-byte-aligned
+      Forney deinterleaver path noted by Eo and
+      Bahk~\cite{eo2024tdmb}; a clean
+      0\,\%~$\to$~87.3\,\% before/after on the reference capture.
+\item An empirical black-box re-derivation of the
+      MPEG-4~Systems \texttt{SLConfigDescriptor} profile used by
+      Korean operators (all six flag bits in a fixed pattern,
+      33-bit DTS, 33-bit CTS), under which every SL packet
+      header is exactly 9 bytes with byte~0 = \texttt{0xCF},
+      verified against \(>\,3{,}000\) on-air PES packets.
+\item Empirical observation that the YTN DMB multiplex on K8B
+      embeds the AVC decoder configuration record inside the
+      BIFS section stream rather than the object-descriptor
+      stream prescribed by the reference MPEG-4 Systems examples
+      --- a configuration choice permitted by TS~102\,428's
+      stream-type allowances, not a standards deviation.
 \item Reproducibility scaffolding: per-capture JSON metadata
       sidecars (RF parameters, antenna, location) and a single
       one-shot CLI driver, with all code, the reference capture,
@@ -231,33 +250,44 @@ visually-coherent frames from the surviving slices.
 
 After RS correction the transport stream carries PID
 \texttt{0x113} as the video PES with \texttt{stream\_id}=
-\texttt{0xFA} (MPEG-4 SL-packetised).  Each PES contains exactly
+\texttt{0xFA} (MPEG-4 SL-packetised, per ISO/IEC 13818-1
+Amendment~7~--- the framework catalogued by Lee~et~al.~at
+ETRI in 2004~\cite{lee2004m4smux}).  Each PES contains exactly
 one SL packet, and each SL packet exactly one H.264 NAL unit
 (stored without start-code prefix, AVCC style).
 
-Reading ISO/IEC 14496-1~\cite{iso14496-1} and the FFmpeg
-\texttt{read\_sl\_header()} implementation in \texttt{dmb-oss}
-together, the maximum-length AU-start SL header for the Korean
-profile contains 6 flag bits, 33 bits of DTS, and 33 bits of
-CTS --- exactly 72 bits = 9~bytes.  We verify this on
-\emph{every} one of the 3{,}135 SL packets in our reference
+ISO/IEC 14496-1 leaves the SL header layout to a per-stream
+\texttt{SLConfigDescriptor}.  In a black-box setting we cannot
+read the descriptor directly, so we solve for the profile that
+makes the bitstream consistent.  Combining the standard's
+degrees of freedom with the FFmpeg \texttt{read\_sl\_header()}
+implementation in \texttt{dmb-oss}, a 33-bit DTS + 33-bit CTS
++ six flag bits gives 72 bits = exactly 9 bytes.  We verify this
+on \emph{every} one of the 3{,}135 SL packets in our reference
 capture: each PES body starts with the byte \texttt{0xCF}
 ($=11001111_2$, decoded as
 \{au\_start,au\_end\}=\{1,1\},
 \{padding,rand\_acc\_pt\}=\{0,0\},
 \{dts\_flag,cts\_flag\}=\{1,1\}), followed by 8 timestamp bytes,
-after which byte~9 is the single NAL header.
+after which byte~9 is the single NAL header.  The implied
+descriptor is therefore
+\texttt{useAccessUnitStartFlag}=
+\texttt{useAccessUnitEndFlag}=
+\texttt{useTimeStampsFlag}=1
+with \texttt{timeStampLength}=33; a standards-compliant operator
+choice rather than a deviation.
 
 The bare NAL stream however references PPS~0 and SPS~0, neither
-of which appears in PID~\texttt{0x113}.  The MPEG-4 Systems
-specification~\cite{iso14496-1} prescribes that the
+of which appears in PID~\texttt{0x113}.  The reference MPEG-4
+Systems examples~\cite{iso14496-1} carry the
 \texttt{AVCDecoderConfigurationRecord} containing the SPS and
-PPS NAL units travels in the object-descriptor (\texttt{tid}=0x04)
+PPS NAL units in the object-descriptor (\texttt{tid}=0x04)
 section stream, but in our YTN DMB capture the OD sections on
 PID~\texttt{0x111} contain only Korean-DMB private commands.
 The AVCC bytes are instead embedded inside the
 \emph{scene-description} (\texttt{tid}=0x05) section stream on
-PID~\texttt{0x112}.  Our locator scans the SD byte stream for the
+PID~\texttt{0x112}~--- a stream-type restriction permitted by
+TS~102\,428~\cite{etsi102428}.  Our locator scans the SD byte stream for the
 canonical AVCC signature
 $\texttt{01}\;\langle\textit{prof}\rangle\;\langle\textit{compat}\rangle
    \;\langle\textit{level}\rangle\;\texttt{FF}\;\texttt{E1}\;
