@@ -292,14 +292,23 @@ choice rather than a deviation.
 The bare NAL stream however references PPS~0 and SPS~0, neither
 of which appears in PID~\texttt{0x113}.  The reference MPEG-4
 Systems examples~\cite{iso14496-1} carry the
-\texttt{AVCDecoderConfigurationRecord} containing the SPS and
-PPS NAL units in the object-descriptor (\texttt{tid}=0x04)
-section stream, but in our YTN DMB capture the OD sections on
-PID~\texttt{0x111} contain only Korean-DMB private commands.
-The AVCC bytes are instead embedded inside the
-\emph{scene-description} (\texttt{tid}=0x05) section stream on
-PID~\texttt{0x112}~--- a stream-type restriction permitted by
-TS~102\,428~\cite{etsi102428}.  Our locator scans the SD byte stream for the
+\texttt{AVCDecoderConfigurationRecord} on the object-descriptor
+(\texttt{tid}=0x04) section stream via an
+\texttt{ObjectDescriptorUpdate} command (tag \texttt{0x01}); the
+\texttt{dmb-oss} patch~\cite{eo2024tdmb} encodes that same
+convention directly.  YTN DMB on K8B does not match it: PID
+\texttt{0x111} carries only user-private commands (first body
+byte \texttt{0xC0}), so a strict OD-only receiver fails with
+``Unsupported OD command.''  The AVCC bytes appear instead on
+PID \texttt{0x112}, where every section's first body byte is
+\texttt{0x01} (\texttt{ObjectDescriptorTag}) and the descriptor
+that follows is a complete \texttt{ObjectDescriptor} with the
+H.264 \texttt{DecoderSpecificInfo} inside~--- a BIFS-style
+\texttt{OD\_Update} placement permitted by ISO/IEC 14496-1 and
+by TS~102\,428~\cite{etsi102428}.  We report this only as a
+YTN-specific deployment choice; cross-checking against MBC, KBS,
+or SBS captures requires data that has not been publicly
+released.  Our locator scans the SD byte stream for the
 canonical AVCC signature
 $\texttt{01}\;\langle\textit{prof}\rangle\;\langle\textit{compat}\rangle
    \;\langle\textit{level}\rangle\;\texttt{FF}\;\texttt{E1}\;

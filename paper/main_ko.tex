@@ -513,18 +513,53 @@ PPS NAL 유닛이 존재하지 않는다.  이는 디코더 구성이 대역 외
 ISO/IEC 14496-1~\cite{iso14496-1}의 참조 예시에서 H.264
 \texttt{AVCDecoderConfigurationRecord}(디코더 부트스트랩에 필요한
 SPS와 PPS NAL 유닛을 담는 레코드)는 객체기술자 스트림 안의
-\texttt{DecoderSpecificInfo} 기술자(descriptor)에 실려 전송된다.
-그러나 YTN DMB 캡처에서는 정반대 양상이 관찰되었다:
-PID~\texttt{0x111}의 OD 섹션은 사용자 정의 태그
-(\texttt{0xC0}--\texttt{0xFE}, ``Annex K 사용자 비공개'' 범위)의
-DMB 사설 명령으로만 채워져 있고, 실제 AVCC 바이트는 PID~\texttt{0x112}의
-장면기술/BIFS 섹션 스트림 안에 임베드되어 있다.  이는 표준 위반이
-아니라 운용사의 구성 선택이다: ETSI TS~102\,428~\cite{etsi102428}은
-DMB 비디오 서비스 프로파일에서 스트림 타입에 대한 제한을 명시적으로
-허용하며, Lee~외~\cite{lee2004m4smux}가 정리한 허용 기술자 배치 카탈로그도
-이 배치를 수용할 만큼 넓다.  그러나 운용사의 IOD에 미리 접근하지 못한
-clean-room 디코더는 표준만으로 위치를 추론할 수 없고, 콘텐츠를 직접
-탐색하여 레코드를 찾아야 한다.
+\texttt{DecoderSpecificInfo} 기술자(descriptor)에 실려, 표준
+\texttt{ObjectDescriptorUpdate} 명령(tag \texttt{0x01})에 포장되어
+전송된다.  Eo와 Bahk의 \texttt{dmb-oss} FFmpeg 패치~\cite{eo2024tdmb}는
+이 관례를 그대로 반영한다: 그들의 \texttt{m4sl\_cb}는 table-id가
+\texttt{0x04}(OD 섹션)인 섹션만 처리하며, \texttt{mp4\_read\_od}는
+\texttt{0x01} 이외의 명령 태그에 대해 ``\texttt{Unsupported OD command}''
+오류로 중단한다.
+
+그러나 YTN DMB K8B 캡처는 이 관례에 부합하지 않는다.  SL을 운반하는
+두 PID의 모든 섹션을 검사한 결과는 다음과 같다.
+
+\begin{itemize}[leftmargin=*,nosep]
+\item \textbf{PID \texttt{0x111}} (OD, table-id~\texttt{0x04}):
+       2분 캡처 동안 224개 섹션이 동일하게 반복된다.  1바이트 SL
+       헤더(\texttt{0xC0}: au\_start, au\_end, 타임스탬프 없음)
+       다음 바이트가 \texttt{0xC0}인데, 이는 ISO/IEC~14496-1의
+       사용자 비공개 명령 영역
+       (\texttt{0xC0}--\texttt{0xFE})에 속하며 표준
+       \texttt{ObjectDescriptorUpdate} 태그 \texttt{0x01}이 \emph{아니다}.
+       PID \texttt{0x111}의 누적 41\,kB 페이로드 어디에도 AVCC
+       바이트는 나타나지 않는다.  따라서 Eo와 Bahk의
+       관례~\cite{eo2024tdmb}대로 작성한 수신기는 본 캡처에서 AVCC
+       추출에 실패하고 ``\texttt{Unsupported OD command: 192}''를
+       출력하게 된다.
+\item \textbf{PID \texttt{0x112}} (SD / BIFS, table-id~\texttt{0x05}):
+       220개의 동일 섹션.  SL 헤더 바이트 직후가 \texttt{0x01} ---
+       \texttt{ObjectDescriptorTag}이며, 이어지는 기술자 본문 전체가
+       H.264 비디오 스트림의 \texttt{DecoderConfigDescriptor}를 포함한
+       완전한 \texttt{ObjectDescriptor}이다.  그 안의
+       \texttt{DecoderSpecificInfo}가 바로 우리가 찾는 AVCC 바이트이다.
+\end{itemize}
+
+다시 말해, YTN 멀티플렉스는 \texttt{ObjectDescriptor}(AVCC 내장)를
+표준 OD PID의 \texttt{ObjectDescriptorUpdate}로 송출하지 않고, 장면기술
+PID에 BIFS 스타일 갱신 경로로 운반한다.  두 배치 모두 MPEG-4 Systems
+표준 범위 안이다 --- ISO/IEC 14496-1의 BIFS 장면기술 문법은 \texttt{OD\_Update}
+명령이 BIFS 안에 포함되는 것을 명시적으로 허용하며, ETSI
+TS~102\,428~\cite{etsi102428} 역시 DMB 프로파일에서 이러한 재매핑을 정당화하는
+스트림 타입 제한을 허용한다.  본 연구는 다른 한국 운용사 (MBC DMB, U-KBS,
+SBS u 등) 가 동일 관례를 따르는지 교차 검증할 수 없었다 --- dmb-oss 측의
+캡처 셋이 공개되지 않았기 때문이다.  본 절은 이 점을 K8B 상의 YTN DMB에서
+관찰된 운용사 단위 배치 선택으로만 기록한다.
+
+실용적인 결론은 명확하다: clean-room 디코더는 OD 스트림 관례 단독에
+의존할 수 없으며, BIFS 섹션 스트림으로부터도 AVCC를 복원할 수 있도록
+준비되어 있어야 한다.  운용사의 IOD에 사전 접근할 수 없는 한 표준만으로는
+위치를 추론할 수 없으므로, 콘텐츠를 직접 탐색해 레코드를 찾아야 한다.
 
 본 연구의 검색기는 다음과 같은 바이트 패턴을 SD 스트림 전반에서 탐색한다.
 $$\texttt{01}\;\langle\textit{profile}\rangle\;\langle\textit{compat}\rangle

@@ -591,20 +591,61 @@ In the reference MPEG-4 Systems examples given by ISO/IEC
 \texttt{AVCDecoderConfigurationRecord} (which contains the SPS and
 PPS NAL units required to bootstrap the decoder) is transported
 inside the Object-Descriptor stream as part of a
-\texttt{DecoderSpecificInfo} descriptor.  In the YTN DMB capture we
-observe the opposite: the OD-stream sections on PID~\texttt{0x111}
-contain only DMB-private commands with user-defined tags
-(\texttt{0xC0}--\texttt{0xFE}, the ``Annex K user-private'' range);
-the actual AVCC bytes appear inside the Scene-Description / BIFS
-section stream on PID~\texttt{0x112}.  This is an operator
-configuration choice, not a standards deviation: ETSI TS~102\,428
-\cite{etsi102428} explicitly permits stream-type restrictions in
-the DMB video-service profile, and the catalogue of permitted
-descriptor placements in
-Lee~et~al.~\cite{lee2004m4smux} is broad enough to accommodate it.
-Without access to the operator's IOD ahead of time, however, a
-clean-room decoder cannot infer the location from the standards
-alone, and must locate the record by content.
+\texttt{DecoderSpecificInfo} descriptor, packaged by an
+\texttt{ObjectDescriptorUpdate} command (tag \texttt{0x01}).  Eo and
+Bahk's contemporaneous \texttt{dmb-oss} FFmpeg
+patch~\cite{eo2024tdmb} reflects this convention directly: their
+\texttt{m4sl\_cb} only handles sections with table-id
+\texttt{0x04} (the OD section), and \texttt{mp4\_read\_od} aborts
+with ``\texttt{Unsupported OD command}'' on any command tag
+other than \texttt{0x01}.
+
+The YTN DMB K8B capture, however, does not match that convention.
+We inspected every section on the two SL-carrier PIDs:
+
+\begin{itemize}[leftmargin=*,nosep]
+\item \textbf{PID \texttt{0x111}} (OD, table-id~\texttt{0x04}):
+      224 sections recur identically across the 2-minute capture.
+      After the 1-byte SL header (\texttt{0xC0}: au\_start, au\_end,
+      no timestamps), the next byte is \texttt{0xC0} --- in the
+      ISO/IEC~14496-1 user-private command range
+      (\texttt{0xC0}--\texttt{0xFE}), \emph{not} the standard
+      \texttt{ObjectDescriptorUpdate} tag \texttt{0x01}.  No AVCC
+      bytes appear anywhere in the 41\,kB of accumulated PID
+      \texttt{0x111} payload.  A receiver written to Eo and
+      Bahk's convention~\cite{eo2024tdmb} would therefore fail
+      AVCC extraction on this capture and emit
+      ``\texttt{Unsupported OD command: 192}''.
+\item \textbf{PID \texttt{0x112}} (SD / BIFS, table-id~\texttt{0x05}):
+      220 identical sections.  After the SL header byte, the very
+      next byte is \texttt{0x01} --- an
+      \texttt{ObjectDescriptorTag}.  The descriptor body that
+      follows is a complete \texttt{ObjectDescriptor} containing an
+      \texttt{ES\_Descriptor} with the
+      \texttt{DecoderConfigDescriptor} for the H.264 video stream,
+      and the \texttt{DecoderSpecificInfo} inside it is the AVCC
+      bytes we are looking for.
+\end{itemize}
+
+In other words, the YTN multiplex transports the
+\texttt{ObjectDescriptor} (with AVCC inside) on the scene-description
+PID using a BIFS-style update path, rather than on the OD PID using
+the standard \texttt{ObjectDescriptorUpdate} command.  Both
+placements are within the MPEG-4 Systems standard (the BIFS scene
+description grammar of ISO/IEC 14496-1 specifically allows
+\texttt{OD\_Update} commands to be carried inside BIFS), and ETSI
+TS~102\,428~\cite{etsi102428} permits the stream-type restrictions
+that make this re-mapping legal in the DMB profile.  We have not
+been able to cross-check whether other Korean operators
+(MBC DMB, U-KBS, SBS u, $\ldots$) follow the same convention, since
+the dmb-oss capture set is not public; we report this only as an
+operator-level deployment choice observed in YTN DMB on K8B.
+
+The practical consequence is that a clean-room decoder cannot rely
+on the OD-stream convention alone: it must also be prepared to
+recover AVCC from the BIFS section stream.  Without access to the
+operator's IOD ahead of time the location cannot be inferred from
+the standards, so we instead locate the record by content.
 
 Our locator scans the SD-stream byte stream for the AVCC signature
 $$\texttt{01}\;\langle\textit{profile}\rangle\;\langle\textit{compat}\rangle
