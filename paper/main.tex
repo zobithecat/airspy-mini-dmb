@@ -1,10 +1,14 @@
-% !TEX program = pdflatex
+% !TEX program = xelatex
 % T-DMB end-to-end open-source receiver — arXiv preprint
 %
 % Overleaf:
 %   1. Create new project, upload this file + paper/figures/*
-%   2. Compile with pdflatex (preferred) or xelatex
-%   3. The bibliography uses biber + biblatex — Overleaf builds it automatically
+%   2. Menu → Compiler → XeLaTeX  (so the Korean companion main_ko.tex
+%      can compile in the same project; English file works under XeLaTeX
+%      thanks to the iftex shim below)
+%   3. The bibliography uses biber + biblatex — Overleaf builds it
+%      automatically.  For arXiv submission, the .bbl file must be
+%      uploaded too (arXiv does not run biber).
 %
 % Recommended template: arXiv-style (single column) for the preprint;
 % switch to IEEEtran two-column for a journal/conference resubmission.
@@ -12,8 +16,11 @@
 \documentclass[11pt,a4paper]{article}
 
 \usepackage[a4paper,margin=1in]{geometry}
-\usepackage[utf8]{inputenc}
-\usepackage[T1]{fontenc}
+\usepackage{iftex}
+\ifpdftex
+  \usepackage[utf8]{inputenc}
+  \usepackage[T1]{fontenc}
+\fi
 \usepackage{lmodern}
 \usepackage{microtype}
 \usepackage{graphicx}

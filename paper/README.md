@@ -1,27 +1,40 @@
 # Paper source
 
 Source for the arXiv preprint *"An End-to-End Open-Source Software
-Receiver for Korean Terrestrial DMB on Low-Cost SDR Hardware."*
+Receiver for Korean Terrestrial DMB on Low-Cost SDR Hardware"* (English,
+`main.tex`) and its Korean companion (`main_ko.tex`).
 
 ## Build on Overleaf
 
 1. Create a new project on Overleaf (Blank Project).
-2. Upload `main.tex`, `refs.bib`, and the `figures/` directory.
-3. Overleaf auto-detects `pdflatex` + `biber` from `main.tex`.
-4. Click Compile.
+2. Upload `main.tex`, `main_ko.tex`, `refs.bib`, and the `figures/`
+   directory together.
+3. **Menu → Compiler → XeLaTeX** (required — `main_ko.tex` uses the
+   `kotex` package for Korean typesetting; `main.tex` is XeLaTeX-
+   compatible via the `iftex` shim in its preamble).
+4. **Menu → Main document →** pick `main.tex` for the English version
+   or `main_ko.tex` for the Korean version.  Recompile after switching.
 
-If you prefer LuaLaTeX (for full Korean glyph support in any future
-appendices), change the magic comment in `main.tex` line 1 to
-`% !TEX program = lualatex` and add `\usepackage{fontspec}`.
+The two files share `refs.bib` and `figures/` so any edit to a figure
+or reference applies to both.  Bibliography is built by Overleaf with
+`biber` automatically; for arXiv submission of the English version,
+upload the resulting `main.bbl` file as well (arXiv does not run
+`biber`).
 
 ## Build locally
 
 ```sh
 cd paper/
-latexmk -pdf -bibtex -interaction=nonstopmode main.tex
+# English (XeLaTeX)
+latexmk -xelatex -bibtex -interaction=nonstopmode main.tex
+
+# Korean (XeLaTeX + kotex)
+latexmk -xelatex -bibtex -interaction=nonstopmode main_ko.tex
 ```
 
-Tested with TeX Live 2024 on macOS.
+Tested with TeX Live 2024 on macOS.  The Korean version needs the
+`kotex` package and a Korean font; both are pre-installed on
+Overleaf and in TeX Live's `texlive-lang-korean` collection.
 
 ## Author info to fill in
 

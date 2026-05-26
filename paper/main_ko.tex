@@ -1,0 +1,474 @@
+% !TEX program = xelatex
+% T-DMB 종단간 오픈소스 수신기 — 한글판 프리프린트
+%
+% Overleaf 사용법:
+%   1. Menu → Compiler → XeLaTeX (필수, kotex 때문)
+%   2. Menu → Main document → main_ko.tex 으로 전환 후 Recompile
+%      (영문 main.tex 로 돌릴 땐 다시 전환)
+%   3. refs.bib, figures/ 디렉터리는 영문판과 공유
+%
+% 본 한글판은 영문 arXiv 프리프린트의 동일한 내용을 한국어로 옮긴 것이며,
+% 별도 학술지/학회 (예: 한국통신학회, 대한전자공학회) 투고 또는 국내 보고서
+% 용도로 사용할 수 있다.
+
+\documentclass[11pt,a4paper]{article}
+
+\usepackage[a4paper,margin=1in]{geometry}
+\usepackage{kotex}            % Korean Latex (XeLaTeX 기반 자동 폰트 설정)
+\usepackage{microtype}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage{xcolor}
+\usepackage{listings}
+\usepackage{tikz}
+\usepackage{hyperref}
+\usepackage{url}
+\usepackage[backend=biber,style=ieee,sorting=none]{biblatex}
+\usepackage{amsmath}
+\usepackage{enumitem}
+
+\hypersetup{
+    colorlinks=true,
+    linkcolor=blue!60!black,
+    urlcolor=blue!50!black,
+    citecolor=blue!50!black
+}
+
+\lstdefinestyle{code}{
+    basicstyle=\ttfamily\footnotesize,
+    breaklines=true,
+    columns=fullflexible,
+    keepspaces=true,
+    frame=single,
+    rulecolor=\color{black!30},
+    backgroundcolor=\color{black!3},
+    numbers=none
+}
+\lstset{style=code}
+
+\addbibresource{refs.bib}
+
+% --------------------------------------------------------------------
+\title{저비용 SDR 기반 한국형 지상파 DMB의\\
+       종단간 오픈소스 소프트웨어 수신기}
+
+\author{%
+  유성근\textsuperscript{1}\thanks{교신저자: \texttt{orcogre@vendit.co.kr}} \quad
+  Claude\textsuperscript{2}\thanks{Claude는 Anthropic이 개발한
+    대규모 언어 모델로, 본 연구에서 페어 프로그래밍 및 집필 보조 역할을
+    수행하였다.  구체적으로 한국형 T-DMB의 SL 패킷 헤더 구조 역공학,
+    위상 정렬 외부 FEC의 Python 구현 초안 작성, BIFS 스트림에 임베드된
+    AVC \texttt{DecoderConfigurationRecord} 위치 파악, 본 원고의
+    초기 초안 작성을 담당하였다.  모든 설계 결정, 실험 선택, 최종
+    편집 책임은 제1저자에게 있다.}\\
+  \small\textsuperscript{1}독립 연구자, 대한민국 서울\\
+  \small\textsuperscript{2}Anthropic, 미국 샌프란시스코\\
+}
+
+\date{\today}
+
+% --------------------------------------------------------------------
+\begin{document}
+\maketitle
+
+\begin{abstract}
+한국형 지상파 디지털 멀티미디어 방송(T-DMB)은 2005년 12월 세계 최초로 상용
+서비스를 개시하여 20여 년이 지난 지금까지 운용되고 있으나, 저가형
+소프트웨어 정의 라디오(SDR)로부터 RF 신호를 입력받아 디코딩된 비디오
+프레임까지 \emph{한 번에} 처리해 주는 완전한 오픈소스 소프트웨어 스택은
+아직까지 존재하지 않았다.  기존 연구는 두 갈래로 나뉜다: (i)~\texttt{welle.io},
+\texttt{eti-cmdline} 등 ETI(Ensemble Transport Interface) 프레임 출력에서
+멈추는 DAB 수신기군과 (ii)~최근 Eo와 Bahk~\cite{eo2024tdmb}가 발표한
+GNU~Radio + 패치된 FFmpeg 파이프라인이 그것이다.  후자가 오디오/비디오
+디코딩까지 시연하기는 하였으나, GNU~Radio 그래픽 도구에 종속적이며 다수의
+out-of-tree 패치를 요구한다.
+
+본 논문은 제3의 길을 제시한다: 즉 ETI 파싱, 빠른정보채널(FIC) 디코딩,
+리드-솔로몬(RS)과 컨볼루셔널 시간 디인터리버를 결합한 외부 FEC, MPEG-4
+동기 계층(SL) 패킷 역다중화, H.264 기본 스트림 재구성까지 T-DMB
+수신 체인 전체를 구현한 자가완비 Python 패키지를 제안한다.  최종 비디오
+디코딩 단계는 \texttt{dmb-oss} FFmpeg 포크의 \emph{무수정} 빌드본에
+위임한다.  Airspy~Mini~\cite{airspy}와 일반 가정용 실내 안테나로 수신한
+YTN DMB(채널 K8B, 183.008\,MHz)의 30\,MB 캡처 파일에 대하여 본 체인을
+검증하였다: 리드-솔로몬 블록의 87.3\%가 정상 디코딩되었으며, 모든 SL
+패킷 헤더가 정상적으로 파싱되었고, ffmpeg는 한국 방송 콘텐츠가 식별
+가능한 QVGA H.264 베이스라인 비디오 프레임을 출력하였다.  본 연구에서는
+종래의 ``디인터리버 우선, 동기 탐색 후속'' 처리 순서가 실제 캡처에서
+수렴하지 못하는 원인이었던 미보고 동기화 오류를 규명하고 그 해결책을
+제시하였으며, 한국형 T-DMB 방송에서 AVC \texttt{DecoderConfigurationRecord}가
+MPEG-4 Systems 표준이 명시한 객체기술자(OD) 스트림이 아닌
+장면기술/BIFS 스트림에 임베드되어 있다는 사실을 실증적으로 발견하였다.
+소스코드, 참조 캡처, 캡처별 메타데이터 사이드카는 GitHub에 공개되었다.
+\end{abstract}
+
+\noindent\textbf{핵심어:} 소프트웨어 정의 라디오, T-DMB, DAB, MPEG-4 SL 패킷,
+리드-솔로몬, 컨볼루셔널 인터리버, 오픈소스
+
+% ====================================================================
+\section{서론}\label{sec:intro}
+
+한국형 지상파 DMB는 유럽의 Eureka-147 DAB 물리계층~\cite{etsi300401}에
+리드-솔로몬 외부 부호와 Forney 컨볼루셔널 시간 인터리버를 추가하여,
+MPEG-4 AVC/H.264 비디오와 MPEG-4 BSAC 오디오를 MPEG-2 전송 스트림 위에
+실어 DAB 서브채널로 다중화해 전송하는 표준이다~\cite{ttak0026,etsi102427,etsi102428}.
+2005년 12월 상용화된 이래로 전국망으로 배치되어 운용되어 왔으며, 스마트폰
+스트리밍의 부상에도 불구하고 2026년 현재까지도 서비스가 계속되고 있다.
+표준은 공개되어 있고, 변조 방식은 유럽 DAB와 동일한 모드~I OFDM이며,
+DAB 복조기는 \texttt{welle.io}, GNU~Radio의 \texttt{gr-dab} 모듈,
+Jan van Katwijk의 \texttt{eti-stuff} 등 오픈소스로 제공된다.  그럼에도
+불구하고 최근까지 자유 라이선스 하에 공개된 어떠한 소프트웨어도 T-DMB
+RF 캡처로부터 재생 가능한 비디오 파일을 종단간으로 산출하지 못해 왔다.
+
+가장 가까운 선행 연구는 Eo와 Bahk가 ICTC 2024에 발표한
+논문~\cite{eo2024tdmb}과 \texttt{dmb-oss} 저장소로, \texttt{gr-dab}을
+패치된 FFmpeg와 연결하여 재생을 시연하였다.  이 연구는 한국형 T-DMB의
+인코딩 체인을 다룬 정전(canonical) 참고문헌이며, 본 연구는 그 결과에
+크게 의존하고 있다.  그러나 공개된 산출물은 GNU~Radio 플로우그래프와
+FFmpeg 패치 모음의 형태이며, 그래픽 \texttt{GNU~Radio Companion}을
+요구하고, 헤드리스(headless) 동작이나 라이브러리 형태의 사용을 위해
+패키징되어 있지 않다.  또한 디인터리버 정렬이나 누락된 합성 타임스탬프
+등 실용적 함정을 보고하고 있으나 이를 자동 처리하는 통합 도구는 제공하지
+않는다.
+
+본 논문은 다음 세 가지 목표를 중심으로 독립적인 재구현을 기술한다.
+
+\begin{enumerate}[leftmargin=*,nosep]
+\item \textbf{라이브러리 우선.}  모든 단계를 Python 모듈
+       (\texttt{tdmb.eti}, \texttt{tdmb.fec}, \texttt{tdmb.msc} 등)로
+       구성하고 API를 문서화하여, 개별 계층의 단위 시험과 재사용을 가능하게
+       한다 (예: 동일한 참조 캡처를 1분 이내에 복호하는 순수 Python
+       Forney 디인터리버).
+\item \textbf{재현 가능한 캡처.}  모든 RF 캡처에 대해 채널, 주파수, 표본화율,
+       이득 단(stage), bias-tee 상태, 안테나 모델, 캡처 장소를 기록한 JSON
+       사이드카 파일을 동시에 생성한다.  본 논문의 참조 캡처에 대해서도
+       사후 사이드카를 작성하여 산출물 묶음이 자기기술적이 되도록 하였다.
+\item \textbf{원샷 종단간 드라이버.}  단일 명령어
+       (\texttt{python tools/decode\_video.py <capture>.eti})로 전체 체인을
+       순회하여 MP4와 IDR 썸네일 PNG를 출력한다.  실행 시 그래픽 도구나
+       FFmpeg 런타임 패치는 요구되지 않는다 (최종 H.264/BSAC 디코딩에는
+       \emph{미리 빌드된} 무수정 \texttt{dmb-oss} FFmpeg와 링크).
+\end{enumerate}
+
+\subsection{기여 요약}
+\begin{itemize}[leftmargin=*,nosep]
+\item DVB-T와 동일한 다항식의 $GF(2^8)$ RS(204,188) 코드와 $12\times17$
+       Forney 디인터리버로 구성된 T-DMB 외부 FEC 체인의 순수 Python 구현.
+       FIB CRC가 100\%인 한국 K8B 참조 캡처에서 블록 성공률 87.3\% 달성.
+\item 미보고된 위상 정렬 오류의 규명과 해결책: MSC 바이트 스트림의 임의
+       오프셋부터 디인터리버에 입력하면 TS 동기 바이트(\texttt{0x47})는
+       정상 주기로 출력되나 204바이트 블록 내부 바이트들이 조용히 뒤섞인다.
+       동기 바이트의 실측 위상(우리 캡처에서 204주기 내 오프셋 160)으로
+       선정렬하면 비트 단위로 정확한 디인터리빙이 복원된다.
+\item 한국형 T-DMB 비디오 스트림의 SL 패킷 헤더 레이아웃 역공학:
+       Access Unit 시작 시 9바이트 고정 길이(6비트 플래그 + 33비트 DTS +
+       33비트 CTS), 선두 바이트는 항상 \texttt{0xCF}.  3{,}000여 PES
+       패킷에 대해 검증.
+\item AVC \texttt{DecoderConfigurationRecord}가 비디오 ES의 부트스트랩에
+       필요한 SPS, PPS NAL 유닛을 담는다.  표준 MPEG-4
+       Systems~\cite{iso14496-1}은 이 레코드를 객체기술자 스트림에 싣도록
+       명시하나, 한국형 T-DMB에서는 장면기술(table\_id~\texttt{0x05})
+       섹션 스트림에 임베드되어 있음을 실증적으로 관찰하였다.  바이트 패턴
+       기반의 휴리스틱 검색기를 제공하고 YTN DMB 앙상블에서 동작을 확인하였다.
+\item Overleaf 호환 논문 소스, Python 패키지, 30\,MB 참조 캡처와 메타데이터
+       사이드카, 그리고 해당 캡처로부터 디코딩된 20장의 IDR 썸네일을 함께
+       공개.
+\end{itemize}
+
+% ====================================================================
+\section{시스템 개요}\label{sec:system}
+
+\begin{figure}[t]
+\centering
+\input{figures/pipeline.tex}
+\caption{RF 입력에서 디코딩된 H.264 프레임까지의 종단간 파이프라인.
+1, 2단계(DAB 복조 및 ETI 생성)는 패치된 \texttt{eti-cmdline-airspy} 빌드본에
+위임한다 (한국형 K-prefix 채널 인식을 위한 band-handler 표 패치, 환경변수
+방식의 Airspy 이득 단 제어 패치 두 줄).  3--7단계(ETI~$\to$~FIC,
+MSC,~RS+TI,~SL,~AVCC,~H.264~ES)는 순수 Python으로 구현된다.  최종 비디오
+디코딩은 \texttt{dmb-oss} FFmpeg가 런타임 수정 없이 수행한다.}
+\label{fig:pipeline}
+\end{figure}
+
+그림~\ref{fig:pipeline}이 전체 체인의 구조이다.  Airspy~Mini SDR을 사용하여
+표~\ref{tab:k-block}에 정리된 한국 K-블록 중심 주파수 중 하나로 튜닝하여
+3\,MSPS 또는 6\,MSPS로 캡처한다.  12채널 K-블록 래스터는 ETSI
+표준~\cite{etsi300401}과 달리 VHF Band~III를 1.728\,MHz 간격으로 분할한다
+(6\,MHz 아날로그 TV 채널을 A/B/C 세 등분).  따라서 한국 캡처가 가능하려면
+\texttt{eti-cmdline} 내부의 band-handler 표에 \texttt{K} 접두 항목을
+사전 추가해 두어야 한다.
+
+\begin{table}[t]
+\centering
+\caption{한국 K-블록 채널 래스터 및 수도권 운용 사업자.}
+\label{tab:k-block}
+\begin{tabular}{llll}
+\toprule
+채널 & 중심 주파수 & 간격 & 운용 사업자 (수도권) \\
+\midrule
+K8B  & 183.008\,MHz & 1.728\,MHz & YTN DMB \\
+K12A & 205.280\,MHz & 1.728\,MHz & MBC DMB \\
+K12B & 207.008\,MHz & 1.728\,MHz & U-KBS \\
+K12C & 208.736\,MHz & 1.728\,MHz & SBS u \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+% ====================================================================
+\section{외부 FEC: 동기 정렬 디인터리빙}\label{sec:rs}
+
+T-DMB는 DAB 물리계층 위에 ETSI TS~102\,427~\cite{etsi102427}이 정의한
+외부 보호 단계를 추가한다: 각 188바이트 MPEG-2 전송 스트림 패킷을 먼저
+204바이트 부호어로 리드-솔로몬 인코딩하고(RS(255,239)에서 단축한
+RS(204,188), $\alpha=2$, 원시 다항식 $0x11d$, FCR$=0$ --- DVB-T와 동일),
+그 결과 부호어 스트림을 분기 수 $N=12$, 깊이 $M=17$의 Forney 방식으로
+바이트 단위 컨볼루셔널 인터리빙한다.
+
+수신기에서는 비터비 내부 FEC 복호와 에너지 디스크램블 이후 MSC 서브채널
+바이트 스트림을 얻는다.  단순한 구현은 즉시 Forney 디인터리버를 가동한
+다음 디인터리빙된 출력에서 204바이트 단위의 TS 동기 바이트(\texttt{0x47})
+정렬을 탐색한다.  그러나 본 연구의 참조 K8B 캡처에서는 이 방식이
+25{,}953회 시도 중 \emph{0회}만 리드-솔로몬 블록을 복호하였다.
+
+원인은 컨볼루셔널 인터리버의 분기가 스트림 위치를 $N=12$로 나눈 나머지로
+색인된다는 점이다.  송신측에서 각 RS 블록의 0번째 바이트는 분기~0
+(지연 0)을 통과하므로 송신 출력의 위치 $0, 204, 408, \ldots$에 나타난다.
+그러나 캡처에서 우리가 \emph{관찰}하는 첫 MSC 바이트는 어떤 RS 블록의
+0번째 바이트가 아니라, 204바이트 주기 내 임의 위상 $\phi$에 위치한다.
+이를 수신측 디인터리버의 ``분기 0''에 입력하면 분기 색인이 전 구간에 걸쳐
+$\phi \bmod 12$만큼 어긋난다 --- 모든 바이트가 잘못된 자리로 순열된다.
+결정적으로 0x47 동기 바이트는 같은 주기로 계속 출력되므로
+(우연히도 $204 = N\cdot M$이라서 수신측 디인터리버의 분기 0 또한 매 204바이트
+블록 첫 바이트에 대응한다), 디인터리빙 \emph{이후} 동기 탐색만으로는
+정렬된 경우와 어긋난 경우를 구별할 수 없다.  이는 Eo와
+Bahk~\cite{eo2024tdmb}가 부수적으로 보고한 ``디인터리버는 TS 패킷의 동기
+바이트를 입력 청크의 첫 바이트로 받아야 한다''라는 관찰과 일치한다.
+
+본 연구의 해결책은 동기 탐색을 디인터리버 \emph{이전}에 수행하는 것이다.
+약 50개 RS 블록 분량($\sim$10\,kB)의 원시 MSC 바이트를 누적하고, 204개
+후보 위상 각각에 대하여 \texttt{0x47}의 출현 횟수를 집계한다.  최선 위상이
+(a)~블록의 40\,\% 이상에서 검출되고, (b)~차순위 위상의 5배 이상일 때
+잠금(lock)을 확정한다.  이후 선택된 위상보다 앞선 바이트를 버리고
+나머지를 새로 생성한 Forney 디인터리버에 입력한다.  $(N{-}1)\cdot M\cdot N
+= 2244$바이트의 정착 과도(settling transient)가 지나면 디인터리버는
+체계적 RS(204,188) 정정이 가능한 204바이트 부호어를 출력한다.
+
+표~\ref{tab:rs}는 YTN DMB의 K8B 참조 캡처(FIB CRC 100\%, 약 2분 분량)에
+대한 결과를 비교한다.
+
+\begin{table}[t]
+\centering
+\caption{K8B 참조 캡처(서브채널 1, mYTN 비디오)에 대한 외부 FEC 디코딩
+통계.  ``동기 정렬''은 본 연구의 수정안이며, ``기존''은 동기 탐색을
+디인터리버 이후에 수행하는 구현이다.}
+\label{tab:rs}
+\begin{tabular}{lrr}
+\toprule
+지표 & 기존 & 동기 정렬 (본 연구) \\
+\midrule
+RS 블록 총수                  & 25{,}953 & 25{,}953 \\
+RS 무오류                     & 0        & 0 \\
+RS 정정 ($\leq 8$ 바이트)     & 0        & 22{,}652 \\
+RS 정정 불가                  & 25{,}953 & 3{,}301 \\
+\textbf{성공률}              & \textbf{0.0\,\%} & \textbf{87.3\,\%} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+남은 13\,\%의 정정 불가 블록은 정정 능력($t=8$)을 초과하는 버스트 오류로,
+CIF 경계 부근과 간헐적 페이딩 SNR 저하 구간에 집중되어 있다.  슬라이스
+수준에서는 FFmpeg의 매크로블록 오류 은닉 기능이 시각적으로 일관된
+프레임을 복원해 낸다.
+
+% ====================================================================
+\section{SL 역다중화}\label{sec:sl}
+
+RS 복호기에서 출력되는 전송 스트림은 네 개의 논리 PID를 운반한다
+(표~\ref{tab:pids}).  PID~\texttt{0x113}는 비디오 기본 스트림으로,
+MPEG-4 SL 패킷화를 거친 후 \texttt{stream\_id}~$=\texttt{0xFA}$
+(``MPEG-4 SL-packetized stream'')로 PES 패킷에 실린다.  각 PES는 정확히
+하나의 SL 패킷을, 그리고 각 SL 패킷은 정확히 하나의 H.264 NAL 유닛을
+(시작 코드 접두사 없이) 담는다.
+
+\begin{table}[t]
+\centering
+\caption{YTN DMB K8B 앙상블에서 복원된 PID 할당.}
+\label{tab:pids}
+\begin{tabular}{lll}
+\toprule
+PID & 운반 스트림 & 2분간 패킷 수 \\
+\midrule
+\texttt{0x100} & PMT                                & 212 \\
+\texttt{0x111} & 객체기술자 섹션(\texttt{tid}=0x04) & 224 \\
+\texttt{0x112} & 장면기술 섹션(\texttt{tid}=0x05)   & 220 \\
+\texttt{0x113} & 비디오 PES (SL 패킷)               & 16{,}397 \\
+\texttt{0x114} & 오디오 PES (SL 패킷, BSAC)         & 4{,}916 \\
+\texttt{0x1FFF} & 널 패딩                           & 457 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{SL 헤더 레이아웃}
+
+\texttt{SLPacketHeader()}의 ISO/IEC 14496-1~\cite{iso14496-1} 명세와
+\texttt{dmb-oss}의 \texttt{read\_sl\_header()} 구현을 함께 읽어 보면,
+한국형 T-DMB 프로파일에서 AU 시작 패킷의 최대 길이 헤더는 다음과 같이
+구성된다.
+
+\begin{align*}
+\text{header bits} \;=\; & 1 \;(\text{au\_start}) + 1 \;(\text{au\_end}) + 1 \;(\text{padding}) + \\
+                         & 1 \;(\text{rand\_acc\_pt}) + 1 \;(\text{dts\_flag}) + 1 \;(\text{cts\_flag}) + \\
+                         & 33 \;(\text{DTS}) + 33 \;(\text{CTS}) \\
+                       =\; & 72 \; \text{비트} \;=\; \text{정확히 } 9 \;\text{바이트}.
+\end{align*}
+
+본 연구의 참조 캡처에서 관찰된 3{,}135개의 SL 패킷 \emph{모두}에 대하여
+이를 실증적으로 확인하였다: 각 PES 본문은 \texttt{0xCF}로 시작하는데
+(=$0b11001111$, 즉 \{au\_start,au\_end\}=\{1,1\},
+\{padding,rand\_acc\_pt\}=\{0,0\}, \{dts\_flag,cts\_flag\}=\{1,1\}로
+디코딩되고 DTS의 상위 2비트가 뒤따른다), 이어지는 8바이트가 타임스탬프
+필드의 나머지이며, 9번째 바이트부터는 단일 H.264 NAL 유닛의 헤더이다.
+
+\subsection{NAL 스트림}
+
+각 PES에서 9바이트 SL 헤더를 제거하면 H.264 NAL 바이트의 스트림이 남는다.
+참조 캡처에서 NAL 헤더 분포는 non-IDR 슬라이스 3{,}038개와 주기적
+IDR 슬라이스 97개로 구성되며, GoP(Group of Pictures) 길이가 대략 32 ---
+30\,fps QVGA 방송에 전형적인 수치이다.  기본 스트림 내부에는 SPS나
+PPS NAL 유닛이 존재하지 않는다.  이는 디코더 구성이 대역 외(out-of-band)로
+운반되는 AVCC 방식의 저장과 일치한다.
+
+% ====================================================================
+\section{AVC Decoder Configuration Record 위치}\label{sec:avcc}
+
+표준 MPEG-4 Systems에서 H.264 \texttt{AVCDecoderConfigurationRecord}
+(디코더 부트스트랩에 필요한 SPS와 PPS NAL 유닛을 담는 레코드)는 객체기술자
+스트림 안의 \texttt{DecoderSpecificInfo} 기술자(descriptor)에 실려
+전송된다~\cite{iso14496-1}.  그러나 YTN DMB 캡처에서는 정반대 양상이
+관찰되었다: PID~\texttt{0x111}의 OD 섹션은 사용자 정의 태그
+(\texttt{0xC0}--\texttt{0xFE}, ``Annex K 사용자 비공개'' 범위)의
+DMB 사설 명령으로만 채워져 있고, 실제 AVCC 바이트는 PID~\texttt{0x112}의
+장면기술/BIFS 섹션 스트림 안에 임베드되어 있다.
+
+본 연구의 검색기는 다음과 같은 바이트 패턴을 SD 스트림 전반에서 탐색한다.
+$$\texttt{01}\;\langle\textit{profile}\rangle\;\langle\textit{compat}\rangle
+   \;\langle\textit{level}\rangle\;\texttt{FF}\;\texttt{E1}\;
+   \langle\textit{SPS\_len}\rangle\;\langle\textit{SPS}\rangle\;
+   \texttt{01}\;\langle\textit{PPS\_len}\rangle\;\langle\textit{PPS}\rangle$$
+프로파일은 알려진 H.264 값
+(\texttt{0x42}/\texttt{0x4D}/\texttt{0x58}/\texttt{0x64}/\texttt{0x6E})
+중 하나로, 레벨은 $[\texttt{0x09},\texttt{0x42}]$로,
+\texttt{lengthSizeMinusOne}/예약 바이트는 형태 $\texttt{FC}|x$로,
+\texttt{numOfSPS}/예약 바이트는 $\texttt{E0}|n$($n=1$)로 제약한다.  이
+서명은 주변의 BIFS 명령들 사이에서 레코드를 유일하게 식별하기에 충분하다.
+K8B 참조 캡처에서 복원된 레코드는 다음과 같다.
+
+\begin{lstlisting}
+SPS (9 B):  67 42 00 0d 95 a0 50 7c 40
+PPS (4 B):  68 ce 38 80
+            -- profile_idc = 0x42 (Baseline)
+            -- level_idc   = 0x0d (Level 1.3)
+\end{lstlisting}
+
+이를 Annex-B 형식의 NAL 유닛으로 변환하여 추출된 슬라이스 스트림 앞에
+부가하면, FFmpeg가 \texttt{Baseline 320$\times$240 25\,fps yuv420p}로
+식별하는 완전한 자가완비 H.264 바이트 스트림이 완성된다.
+
+% ====================================================================
+\section{재현성과 메타데이터}\label{sec:reproducibility}
+
+\begin{table}[t]
+\centering
+\caption{참조 캡처 메타데이터(JSON 사이드카
+\texttt{data/captures/k8b\_100pct.json}의 발췌).}
+\label{tab:capture-meta}
+\begin{tabular}{ll}
+\toprule
+필드 & 값 \\
+\midrule
+채널                  & K8B \\
+주파수                & 183.008\,MHz \\
+표본화율              & 3\,MSPS \\
+이득 모드             & Airspy 하드웨어 AGC \\
+Bias-tee              & off \\
+안테나                & Brisa 평판형 실내 안테나 (USB 전원 LNA 내장) \\
+안테나 명목 사양      & 30\,dBi 총 이득, 5\,m 동축 급전 \\
+캡처 장소             & 수도권 서울, 실내 창가 \\
+파일                  & 30.8\,MB, 5{,}014 ETI 프레임 (약 120\,s) \\
+FIB 성공률            & 100\,\% \\
+앙상블 라벨           & YTN DMB (EId 0xE040) \\
+디코딩된 서비스 수    & 5개 (mYTN, HD mYTN, 4DRIVE, LOTTE, EWS) \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+본 저장소에 포함된 \texttt{tools/capture\_logged.py} 래퍼로 캡처한 모든
+ETI 파일은 표~\ref{tab:capture-meta}의 스키마를 따르는 JSON 사이드카를
+함께 출력한다.  본 논문에 동봉된 참조 캡처에 대해서도 빌드 기록을 토대로
+사후 사이드카를 작성하였다.
+
+% ====================================================================
+\section{관련 연구}\label{sec:related}
+
+가장 가까운 선행 연구는 Eo와 Bahk~\cite{eo2024tdmb}의 작업으로,
+\texttt{gr-dab}을 DAB 계층에, 패치된 FFmpeg를 T-DMB 특화 디코딩에 사용하며,
+본 연구가 재발견한 함정들(디인터리버 동기 정렬, 합성 타임스탬프 누락,
+SL 패킷 헤더 파싱) 다수를 보고하고 있다.  해당 연구는 인코딩 체인의 정전
+참고문헌으로 남아 있다.  반면 본 연구는 패키징(단일 Python 패키지 + 문서화된
+API)과 재현성(캡처별 메타데이터 사이드카, 원샷 디코더 스크립트, FFmpeg
+런타임 무수정)을 강조한다.
+
+\texttt{welle.io}~\cite{welleio}는 고품질의 크로스플랫폼 DAB 오디오 수신기이나,
+T-DMB 비디오 스트림 유형은 디코딩하지 않는다.  본 연구가 작은 패치를 통해
+OFDM과 비터비 백엔드를 재사용한 \texttt{eti-cmdline}~\cite{etistuff}은
+ETI(NI) 프레임만을 출력하며, 본 연구의 출발점이 되었다.  초기의 휴대용
+하드웨어 구현은 Lee 등~\cite{lee2007portable}에 기술되어 있으며, 한국형
+T-DMB 시스템 전반은
+\cite{ttak0026,etsi102427,etsi102428,hwang2015simulator,iso14496-1}에 정리되어
+있다.
+
+% ====================================================================
+\section{결론}\label{sec:conclusion}
+
+저자들이 아는 한, 본 연구는 한국형 지상파 DMB를 위한 최초의 패키지화된
+종단간 오픈소스 소프트웨어 수신기를 제시한다.  본 파이프라인은
+Airspy~Mini SDR의 3\,MSPS I/Q 캡처로부터 자유 배포 가능한 구성요소만을
+사용하여 재생 가능한 H.264 비디오 파일을 산출한다.  두 가지 구현 교훈이
+두드러진다: (i)~Forney 디인터리버는 처리 \emph{이전}에 TS 동기 바이트로
+정렬해야 하며, (ii)~한국 사업자들은 H.264 AVCC를 MPEG-4 Systems 표준이
+규정한 OD 스트림이 아닌 BIFS/장면기술 스트림에 임베드한다.  두 사실 모두
+나머지가 올바른 구현을 조용히 망가뜨릴 수 있다.  공개된 소스코드, 캡처,
+메타데이터 스키마는 T-DMB와 그 후속인(현재 암호화되어 있는) HD~DMB의
+추가 연구를 가능하게 한다.
+
+% ====================================================================
+\section*{소스 코드 및 데이터 공개}
+Python 패키지, 캡처 도구, 참조 ETI 캡처, 디코딩된 IDR 썸네일, 그리고 본
+논문의 소스는 \url{https://github.com/zobithecat/airspy-mini-dmb}에서 확인할
+수 있다.  소스 코드는 모두 MIT 라이선스로, 참조 RF 캡처는 CC-BY-4.0으로
+배포된다.
+
+\section*{감사의 글}
+Jan van Katwijk(\texttt{eti-stuff}), Albrecht Lohofener 외(\texttt{welle.io}),
+Sungbo Eo와 Saewoong Bahk(\texttt{dmb-oss})의 선행 오픈소스 작업에 의지하고
+있으며, 그 기여에 깊이 감사드린다.
+
+\section*{저자 기여 및 AI 사용 명시}
+\textbf{유성근}(제1저자)은 프로젝트를 구상하고, 모든 RF 데이터를 캡처하였으며,
+실험과 설계 결정 전반을 주도하였고, 실제 캡처에서 발생한 동기 정렬 실패를
+진단하였으며, 결과를 시각적으로 검증하고 원고를 편집하였다.
+\textbf{Claude}(Anthropic 대규모 언어 모델)는 전 과정에서 페어 프로그래밍과
+초안 작성의 협력자로 참여하였다: Python 구현의 초안을 작성하고, 캡처에
+존재한 원시 바이트 패턴으로부터 한국형 T-DMB SL 패킷 헤더 레이아웃을
+역공학하였으며, BIFS 스트림에 임베드된 AVC
+\texttt{DecoderConfigurationRecord}의 위치를 파악하고, 본 논문의 초기
+초안을 작성하였다.  arXiv의 AI 사용 공개 지침에 따라, 모든 코드, 결과,
+본문은 제출 전 제1저자가 검토하였으며 최종 책임은 제1저자에게 있음을
+명시한다.
+
+% ====================================================================
+\printbibliography
+
+\end{document}
