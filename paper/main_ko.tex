@@ -211,6 +211,25 @@ K12C & 208.736\,MHz & 1.728\,MHz & SBS u \\
 \end{tabular}
 \end{table}
 
+그림~\ref{fig:spectrum}은 본 연구의 캡처 환경에서 K8B 기저대역을
+Airspy~Mini로 6\,MSPS 10초간 적분하여 얻은 PSD이다.  DC 근처에
+폭 1.536\,MHz의 DAB plateau가 명확히 나타나며 OFDM 부반송파가
+$\pm$0.768\,MHz를 점유한다.  $-$1.21\,MHz 위치에 협대역 간섭(절대
+주파수 약 181.797\,MHz, K8A 인접)이 함께 보이며, 이 간섭은
+개발 과정 전반에 걸쳐 반복적으로 등장한 합병증이었다.  3\,MSPS
+설정에서는 표본화율 기반 필터링에 의해 이 간섭의 대부분이
+배제되면서 K8B 통과대역만 살아남는다.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=0.95\linewidth]{figures/spectrum_k8b.png}
+\caption{캡처 현장에서 측정한 K8B 기저대역의 전력 스펙트럼 밀도
+(Airspy~Mini, 6\,MSPS, 10\,s 적분).  음영 영역은 183.008\,MHz를
+중심으로 한 1.536\,MHz 폭의 DAB carrier band이며, 약 181.797\,MHz의
+협대역 간섭이 표시되어 있다.}
+\label{fig:spectrum}
+\end{figure}
+
 % ====================================================================
 \section{외부 FEC: 동기 정렬 디인터리빙}\label{sec:rs}
 
@@ -249,6 +268,25 @@ Bahk~\cite{eo2024tdmb}가 부수적으로 보고한 ``디인터리버는 TS 패�
 나머지를 새로 생성한 Forney 디인터리버에 입력한다.  $(N{-}1)\cdot M\cdot N
 = 2244$바이트의 정착 과도(settling transient)가 지나면 디인터리버는
 체계적 RS(204,188) 정정이 가능한 204바이트 부호어를 출력한다.
+
+그림~\ref{fig:phasehist}는 K8B 참조 캡처에 대하여 25{,}953개 후보
+204바이트 윈도우 전체에 걸친 \texttt{0x47}-at-phase-$\phi$ 발생 횟수
+분포를 보여 준다.  단일 위상 $\phi^*=160$이 전체 적중의 96.3\,\%를
+차지하며, 나머지 모든 위상은 0.6\,\% 미만의 노이즈 수준에 머문다.
+이렇게 첨예한 선택성을 보이는 이유는 TS 동기 바이트가 모든 RS
+블록에 걸쳐 값이 고정된 유일한 바이트이고, 컨볼루셔널 인터리버가
+해당 위상에서 그 결정성을 보존하기 때문이다.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=0.95\linewidth]{figures/rs_phase_hist.png}
+\caption{K8B 참조 캡처의 비터비 이후 MSC 바이트 스트림에서, 204개
+후보 위상 각각에 대한 TS 동기 바이트(\texttt{0x47}) 발생 횟수
+히스토그램.  지배적 위상 $\phi^*=160$(강조 표시)이 $25{,}953$개
+블록 중 $25{,}006$개(96.3\,\%)를 차지하며 나머지는 노이즈
+수준이다.}
+\label{fig:phasehist}
+\end{figure}
 
 표~\ref{tab:rs}는 YTN DMB의 K8B 참조 캡처(FIB CRC 100\%, 약 2분 분량)에
 대한 결과를 비교한다.

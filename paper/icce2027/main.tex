@@ -189,6 +189,21 @@ $(N{-}1)\cdot M\cdot N = 2244$-byte settling transient is dropped
 and the subsequent 204-byte blocks decode with the systematic
 RS(204,188) corrector.  Table~\ref{tab:rs} summarises the result.
 
+\begin{figure}[t]
+\centering
+\includegraphics[width=0.95\columnwidth]{figures/rs_phase_hist.png}
+\caption{\texttt{0x47} hit counts at each of 204 candidate phases
+within the post-Viterbi MSC byte stream of the K8B reference
+capture.  Phase $\phi^*=160$ dominates ($25{,}006/25{,}953$
+blocks, 96.3\%); all other phases are at noise level.}
+\label{fig:phasehist}
+\end{figure}
+
+Figure~\ref{fig:phasehist} confirms the picture empirically for
+our reference capture: one phase ($\phi^*=160$) carries 96.3\%
+of the \texttt{0x47} hits while the remaining 203 candidates sit
+in the noise floor.
+
 \begin{table}[t]
 \centering
 \caption{Outer-FEC decode rate on the K8B reference capture

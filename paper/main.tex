@@ -235,6 +235,28 @@ K12C & 208.736\,MHz & 1.728\,MHz & SBS u \\
 \end{tabular}
 \end{table}
 
+Figure~\ref{fig:spectrum} shows a 6\,MSPS power-spectral-density
+view of the K8B baseband acquired with our reference capture
+setup.  The 1.536\,MHz DAB plateau is clearly visible around DC,
+with the OFDM carriers occupying $\pm$0.768\,MHz.  A strong
+narrowband interferer at $-$1.21\,MHz (absolute frequency
+$\approx$181.797\,MHz, immediately adjacent to K8A) is also
+visible; this interferer was a recurring complication during
+development.  At 3\,MSPS the K8B passband retains the entire DAB
+band but excludes most of the interferer's energy through
+sample-rate-based filtering.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=0.95\linewidth]{figures/spectrum_k8b.png}
+\caption{Power spectral density of the K8B baseband at the
+capture site (Airspy~Mini, 6\,MSPS, 10\,s integration).  The
+shaded region marks the 1.536\,MHz DAB carrier band centred on
+183.008\,MHz; the narrowband interferer at $\approx$181.797\,MHz
+is annotated for context.}
+\label{fig:spectrum}
+\end{figure}
+
 % ====================================================================
 \section{Outer FEC: Sync-Aligned Deinterleaving}\label{sec:rs}
 
@@ -282,6 +304,26 @@ into a freshly-constructed Forney deinterleaver.  After the
 $(N{-}1)\cdot M\cdot N = 2244$-byte settling transient the
 deinterleaver emits 204-byte RS codewords ready for systematic
 correction.
+
+Figure~\ref{fig:phasehist} plots, for the reference K8B capture,
+the count of \texttt{0x47}-at-phase-$\phi$ occurrences across all
+25{,}953 candidate 204-byte windows.  A single phase
+($\phi^*=160$) accounts for 96.3\% of all hits; every other phase
+sits in the noise floor below 0.6\%.  The selectivity is so
+sharp because the TS sync byte is the only byte whose value is
+fixed across all RS blocks, and the conv interleaver preserves
+that determinism at the corresponding phase.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=0.95\linewidth]{figures/rs_phase_hist.png}
+\caption{Histogram of TS-sync-byte (\texttt{0x47}) occurrences at
+each of the 204 candidate phases within the post-Viterbi MSC byte
+stream of the reference K8B capture.  The dominant phase
+$\phi^*=160$ (highlighted) accounts for $25{,}006$ of $25{,}953$
+blocks (96.3\%); all other phases are at noise-floor level.}
+\label{fig:phasehist}
+\end{figure}
 
 Table~\ref{tab:rs} reports the result on the YTN-DMB K8B reference
 capture (FIB CRC 100\%, $\sim$2\,minutes of content).
