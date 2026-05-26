@@ -108,8 +108,11 @@ Object-Descriptor stream used in the reference MPEG-4 Systems
 examples --- an operator configuration choice permitted by
 TS~102\,428 and already catalogued by ETRI in
 2004~\cite{lee2004m4smux}.
-The code, captures, and per-capture metadata sidecars are released on
-GitHub.  Beyond the engineering documentation, we explicitly position
+The code, the 30\,MB reference capture (CC-BY), and per-capture
+metadata sidecars are released on GitHub --- a deliberately
+``open code + open data'' release that, to our knowledge, makes
+this the first Korean T-DMB receiver a reader can reproduce
+end-to-end without RF hardware or travel to Korea.  Beyond the engineering documentation, we explicitly position
 the artefact as a graduate-level term project that, in one assignment,
 integrates DSP, RF, broadcasting systems, channel coding, and video
 codec topics --- the open-source SDR-based successor to the C++
@@ -196,9 +199,25 @@ The contribution of this paper is twofold.  First, we made the
 deployed receive chain available as a single, library-form,
 end-to-end software artefact in a contemporary language and
 runtime, with reproducibility scaffolding (per-capture JSON
-sidecars, a public reference RF capture released under CC-BY) that
-to the best of our knowledge has not been previously released in
-the open literature.  Second, we did this in a \emph{black-box}
+sidecars, a public reference RF capture released under CC-BY)
+that to the best of our knowledge constitutes the \emph{first
+end-to-end Korean T-DMB receiver releasable to the open-source
+community in a fully reproducible form}.  We use the word
+``fully'' advisedly: the closest prior work, Eo and
+Bahk~\cite{eo2024tdmb}, publishes their GNU Radio + FFmpeg
+patches as open source (we build on the FFmpeg fork ourselves),
+but neither the 22 ensembles they captured nor any single
+reference I/Q or ETI file from those captures is publicly
+released.  A reader outside Korea cannot exercise their pipeline
+end-to-end without first travelling to Korea with SDR hardware
+and capturing live RF.  Our release includes a 30\,MB CC-BY
+reference ETI file (the K8B YTN DMB capture used throughout this
+paper) and its JSON metadata sidecar; a reader anywhere in the
+world can clone the repository, pull the ETI from Git~LFS, and
+reproduce every numerical claim in Sections~\ref{sec:rs}--%
+\ref{sec:avcc} on a laptop, without any RF hardware and without
+being in Korea.  This is what we mean by ``open data + open
+code'' rather than ``open code alone.''  Second, we did this in a \emph{black-box}
 posture --- treating Korean T-DMB as an unannotated bitstream and
 deriving every layer empirically from a single 30\,MB on-air
 capture --- and along the way independently rediscovered several

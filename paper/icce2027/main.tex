@@ -140,10 +140,16 @@ open source.  Concretely:
       stream prescribed by the reference MPEG-4 Systems examples
       --- a configuration choice permitted by TS~102\,428's
       stream-type allowances, not a standards deviation.
-\item Reproducibility scaffolding: per-capture JSON metadata
-      sidecars (RF parameters, antenna, location) and a single
-      one-shot CLI driver, with all code, the reference capture,
-      and figures publicly released.
+\item ``Open code + open data'' release: per-capture JSON
+      metadata sidecars, a CC-BY 30~MB reference ETI file, and a
+      single one-shot CLI driver, all publicly available.  Eo and
+      Bahk's dmb-oss~\cite{eo2024tdmb} releases code only; their
+      22-ensemble capture set is not public, so a reader outside
+      Korea cannot exercise their pipeline end-to-end without
+      first capturing live RF locally.  We close that gap: with
+      our release a reader anywhere in the world can reproduce
+      Sections~\ref{sec:rs}--\ref{sec:avcc} on a laptop, without
+      RF hardware.
 \end{itemize}
 
 \emph{Context.}  Korean T-DMB is not ``DAB plus video'' but a
