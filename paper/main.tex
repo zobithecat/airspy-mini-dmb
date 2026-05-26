@@ -1,0 +1,520 @@
+% !TEX program = pdflatex
+% T-DMB end-to-end open-source receiver — arXiv preprint
+%
+% Overleaf:
+%   1. Create new project, upload this file + paper/figures/*
+%   2. Compile with pdflatex (preferred) or xelatex
+%   3. The bibliography uses biber + biblatex — Overleaf builds it automatically
+%
+% Recommended template: arXiv-style (single column) for the preprint;
+% switch to IEEEtran two-column for a journal/conference resubmission.
+
+\documentclass[11pt,a4paper]{article}
+
+\usepackage[a4paper,margin=1in]{geometry}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{microtype}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage{xcolor}
+\usepackage{listings}
+\usepackage{tikz}
+\usepackage{hyperref}
+\usepackage{url}
+\usepackage[backend=biber,style=ieee,sorting=none]{biblatex}
+\usepackage{amsmath}
+\usepackage{enumitem}
+
+\hypersetup{
+    colorlinks=true,
+    linkcolor=blue!60!black,
+    urlcolor=blue!50!black,
+    citecolor=blue!50!black
+}
+
+\lstdefinestyle{code}{
+    basicstyle=\ttfamily\footnotesize,
+    breaklines=true,
+    columns=fullflexible,
+    keepspaces=true,
+    frame=single,
+    rulecolor=\color{black!30},
+    backgroundcolor=\color{black!3},
+    numbers=none
+}
+\lstset{style=code}
+
+\addbibresource{refs.bib}
+
+% --------------------------------------------------------------------
+\title{An End-to-End Open-Source Software Receiver for Korean
+       Terrestrial DMB on Low-Cost SDR Hardware}
+
+\author{%
+  Seonggeun Yoo\textsuperscript{1}\thanks{Correspondence:
+    \texttt{orcogre@vendit.co.kr}} \quad
+  Claude\textsuperscript{2}\thanks{Claude is a large language model
+    developed by Anthropic.  It contributed to this work as a
+    paired-programming and writing assistant: reverse-engineering
+    the Korean T-DMB SL-packet header structure, drafting the
+    Python implementation of the sync-aligned outer FEC, locating
+    the embedded AVC \texttt{DecoderConfigurationRecord} in the
+    BIFS stream, and producing the initial draft of this manuscript.
+    All design decisions, experimental choices, and final editorial
+    control rest with the primary author.}\\
+  \small\textsuperscript{1}Independent Researcher, Seoul,
+                            Republic of Korea\\
+  \small\textsuperscript{2}Anthropic, San Francisco, USA\\
+}
+
+\date{\today}
+
+% --------------------------------------------------------------------
+\begin{document}
+\maketitle
+
+\begin{abstract}
+Terrestrial Digital Multimedia Broadcasting (T-DMB) has been in continuous
+operation in the Republic of Korea since December 2005, yet two decades on
+there exists no \emph{complete} open-source software stack that takes a
+T-DMB RF signal from a low-cost software-defined radio all the way to a
+decoded video frame.  Prior efforts fall into two camps: (i) DAB receivers
+such as \texttt{welle.io} and \texttt{eti-cmdline} that stop after producing
+Ensemble Transport Interface (ETI) frames, and (ii) the recent GNU Radio +
+patched FFmpeg pipeline of Eo and Bahk~\cite{eo2024tdmb} which decodes
+audio/video but is deeply tied to GNU Radio's graphical companion and a set
+of out-of-tree patches.  This paper presents a third path: a self-contained
+Python package implementing the full T-DMB receive chain --- ETI parsing,
+Fast Information Channel (FIC) decoding, Reed-Solomon (RS) plus
+convolutional time-deinterleaver outer FEC, MPEG-4 Sync Layer (SL) packet
+demultiplexing, and H.264 elementary-stream reconstruction --- with the
+final video decoding stage delegated to an unmodified build of the
+\texttt{dmb-oss} FFmpeg fork.  We verify the chain on a 30\,MB
+on-air capture of YTN DMB (channel K8B, 183.008\,MHz) using an
+Airspy~Mini~\cite{airspy} and a consumer indoor antenna: 87.3\% of
+Reed-Solomon blocks decode cleanly, every SL packet header parses, and
+ffmpeg renders QVGA H.264 Baseline video frames containing recognisable
+Korean broadcast content.  We identify and fix a previously unreported
+synchronisation bug that prevented the conventional ``deinterleave-then-find-sync''
+ordering from converging on real captures, and we document an empirical
+discovery that the AVC \texttt{DecoderConfigurationRecord} in Korean
+T-DMB broadcasts is embedded inside the Scene-Description / BIFS stream
+rather than the Object-Descriptor stream as MPEG-4 Systems would suggest.
+The code, captures, and per-capture metadata sidecars are released on
+GitHub.
+\end{abstract}
+
+\noindent\textbf{Keywords:}
+Software-defined radio, T-DMB, DAB, MPEG-4 SL packets, Reed-Solomon,
+convolutional interleaver, open source.
+
+% ====================================================================
+\section{Introduction}\label{sec:intro}
+
+Korean Terrestrial DMB extends the European Eureka-147 DAB physical
+layer~\cite{etsi300401} with an additional Reed-Solomon outer code and a
+Forney convolutional time interleaver, in order to deliver MPEG-4
+AVC~/~H.264 video and MPEG-4 BSAC audio over MPEG-2 transport streams
+multiplexed into DAB sub-channels~\cite{ttak0026,etsi102427,etsi102428}.
+The service has been in commercial operation since December 2005, was
+deployed nationwide, and remains in service in 2026 despite the rise of
+smartphone streaming.  Its specifications are publicly available, the
+modulation is the same DAB Mode~I OFDM used across Europe, and dedicated
+DAB demodulators exist as open source (notably \texttt{welle.io}, the
+\texttt{gr-dab} GNU Radio out-of-tree module, and Jan van Katwijk's
+\texttt{eti-stuff}).  In spite of this, until very recently no published
+software released under a free licence has been able to take a T-DMB RF
+capture and produce a playable video file end-to-end without proprietary
+tools.
+
+The closest precedent is the recent ICTC paper by
+Eo and Bahk~\cite{eo2024tdmb} (with their \texttt{dmb-oss} repository),
+which demonstrated playback by chaining \texttt{gr-dab} with a patched
+FFmpeg.  Their work is the canonical reference for the Korean T-DMB
+encoding chain and we rely on it heavily.  However the released artefact
+is a GNU~Radio flowgraph plus a set of FFmpeg patches; it requires the
+graphical GNU~Radio Companion, has not been packaged for headless or
+library use, and reports several practical gotchas (alignment of the
+deinterleaver, missing composition timestamps) without
+all-in-one tooling to mitigate them.
+
+This paper describes an independent re-implementation with three goals:
+\begin{enumerate}[leftmargin=*,nosep]
+\item \textbf{Library-first.}  Every stage is a Python module
+       (\texttt{tdmb.eti}, \texttt{tdmb.fec}, \texttt{tdmb.msc}, ...) with a
+       documented API, so individual layers can be unit-tested and reused
+       (e.g.\ a pure-Python Forney deinterleaver that decodes the same
+       reference capture as our pipeline in under a minute).
+\item \textbf{Reproducible captures.}  Every RF capture writes a JSON
+       sidecar recording the channel, frequency, sample rate, gain stages,
+       bias-tee state, antenna model, and capture location.  We retro-fit
+       sidecars for our reference captures so that the artefact bundle is
+       self-describing.
+\item \textbf{One-shot end-to-end driver.}  A single command
+       (\texttt{python tools/decode\_video.py <capture>.eti}) traverses
+       the full chain and emits an MP4 plus IDR thumbnail PNGs.  No GUI
+       and no FFmpeg patches at run time are required (we link against a
+       \emph{pre-built} unmodified \texttt{dmb-oss} FFmpeg for the final
+       H.264~/~BSAC decode).
+\end{enumerate}
+
+\subsection{Contributions}
+\begin{itemize}[leftmargin=*,nosep]
+\item A pure-Python implementation of the T-DMB outer FEC chain
+      (RS(204,188) over $GF(2^8)$ with DVB-T polynomial plus a
+      $12\times17$ Forney deinterleaver) that achieves 87.3\% block
+      success on a reference Korean K8B capture with FIB CRC 100\%.
+\item Identification of, and a fix for, a subtle phase-alignment issue:
+      feeding the deinterleaver from an arbitrary offset of the MSC
+      byte stream silently scrambles every 204-byte block even though
+      the TS sync byte~(\texttt{0x47}) remains at the correct
+      cadence.  Pre-aligning to the empirically-determined sync byte
+      offset (160 within the 204-byte cycle on our captures) restores
+      bit-exact deinterleaving.
+\item A reverse-engineered SL packet header layout for the Korean
+      T-DMB video stream (a fixed 9-byte header per Access Unit:
+      6-bit flags, 33-bit DTS, 33-bit CTS, leading flag byte
+      \texttt{0xCF}) verified against \(>\,3000\) PES packets.
+\item Empirical observation that the AVC \texttt{DecoderConfigurationRecord}
+      for the video elementary stream is carried in the Scene-Description
+      (table\_id~\texttt{0x05}) section stream rather than the
+      Object-Descriptor (table\_id~\texttt{0x04}) stream used by the
+      reference MPEG-4 Systems specification~\cite{iso14496-1}.  We
+      provide a heuristic locator and confirm it on the YTN DMB
+      ensemble.
+\item Release of an Overleaf-ready paper source, a Python package, a
+      30\,MB reference capture with its metadata sidecar, and twenty
+      decoded IDR thumbnails from said capture.
+\end{itemize}
+
+% ====================================================================
+\section{System Overview}\label{sec:system}
+
+\begin{figure}[t]
+\centering
+\input{figures/pipeline.tex}
+\caption{End-to-end pipeline from RF to decoded H.264 frame.  Stages 1
+and 2 (DAB demodulation through ETI) are delegated to a patched build
+of \texttt{eti-cmdline-airspy} (one-line patches to the band-handler
+table to recognise Korean K-prefix channels and to the Airspy front-end
+to accept environment-variable gain overrides).  Stages 3--7
+(ETI~$\rightarrow$~FIC,
+MSC,~RS+TI,~SL,~AVCC,~H.264~ES) are pure Python.  The final video
+decode is performed by \texttt{dmb-oss} FFmpeg with no run-time
+modifications.}
+\label{fig:pipeline}
+\end{figure}
+
+Figure~\ref{fig:pipeline} summarises the chain.  We take captures with
+an Airspy~Mini SDR at 3\,MSPS or 6\,MSPS, tuned to one of the Korean
+K-block centre frequencies listed in Table~\ref{tab:k-block}.
+The 12-channel K-block raster spaces VHF Band~III differently from the
+ETSI standard~\cite{etsi300401} (1.728\,MHz steps obtained by dividing
+each 6\,MHz analogue TV channel into three equal sub-channels A/B/C),
+so the band-handler table inside \texttt{eti-cmdline} must be patched
+to add the \texttt{K}-prefixed entries before any Korean capture
+will tune correctly.
+
+\begin{table}[t]
+\centering
+\caption{Korean K-block channel raster and known operators for the
+Seoul metropolitan area.}
+\label{tab:k-block}
+\begin{tabular}{llll}
+\toprule
+Channel & Centre frequency & Spacing & Operator (Seoul) \\
+\midrule
+K8B  & 183.008\,MHz & 1.728\,MHz & YTN DMB \\
+K12A & 205.280\,MHz & 1.728\,MHz & MBC DMB \\
+K12B & 207.008\,MHz & 1.728\,MHz & U-KBS \\
+K12C & 208.736\,MHz & 1.728\,MHz & SBS u \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+% ====================================================================
+\section{Outer FEC: Sync-Aligned Deinterleaving}\label{sec:rs}
+
+T-DMB augments the DAB physical layer with an outer protection step
+specified in ETSI TS~102\,427~\cite{etsi102427}: each 188-byte MPEG-2
+transport-stream packet is first Reed-Solomon encoded into a
+204-byte codeword (RS(204,188) shortened from RS(255,239), with
+$\alpha=2$, primitive polynomial $0x11d$, FCR$=0$ -- identical to
+DVB-T), and the resulting codeword stream is then byte-wise
+convolutional-interleaved using a Forney scheme with $N=12$ branches
+and depth $M=17$.
+
+At the receiver, after Viterbi inner-FEC decoding and energy
+descrambling we obtain a stream of MSC sub-channel bytes.  A naive
+implementation runs the Forney deinterleaver immediately, then scans
+the deinterleaved output for the 204-byte alignment of the TS sync
+byte~(\texttt{0x47}).  On our reference K8B capture this approach
+recovered \emph{zero} successful Reed-Solomon blocks out of 25\,953
+attempts.
+
+The cause is that the conv-interleaver branches are indexed modulo
+$N=12$ based on stream position.  Byte~0 of every transmit-side RS
+block goes through branch~0 (zero delay) and so emerges at transmit
+positions $0, 204, 408, \ldots$ --- but the very first MSC byte we
+\emph{observe} in our capture is not byte~0 of any RS block; it is
+some arbitrary phase $\phi$ within the 204-byte cycle.  If we feed that
+byte into the receive-side deinterleaver as ``branch~0,'' the branch
+indices are off by $\phi \bmod 12$ for the entire stream, and the
+deinterleaver permutes every byte to the wrong slot.  Crucially the
+0x47 sync byte still emerges at the same cadence (because every
+$204$-byte block also has its first byte on branch~0 of the receive
+deinterleaver, by coincidence of $204=N\cdot M$), so a sync-scan
+\emph{after} deinterleaving cannot distinguish the misaligned case
+from the aligned one.  This matches an observation in passing by
+Eo and Bahk~\cite{eo2024tdmb}: ``the deinterleaver requires the sync
+byte of a TS packet to be the first in an input byte chunk.''
+
+Our fix is to perform sync detection \emph{before} the deinterleaver.
+We accumulate $\sim$50 RS blocks ($\sim$10\,kB) of raw MSC bytes,
+compute the count of \texttt{0x47} occurrences at each of 204 candidate
+phases, and require the best phase to be (a)~hit by $\geq 40\%$ of
+blocks and (b)~$\geq 5\times$ the second-best phase.  Once locked, we
+discard the bytes preceding the chosen phase and feed the remainder
+into a freshly-constructed Forney deinterleaver.  After the
+$(N{-}1)\cdot M\cdot N = 2244$-byte settling transient the
+deinterleaver emits 204-byte RS codewords ready for systematic
+correction.
+
+Table~\ref{tab:rs} reports the result on the YTN-DMB K8B reference
+capture (FIB CRC 100\%, $\sim$2\,minutes of content).
+
+\begin{table}[t]
+\centering
+\caption{Outer-FEC decode statistics on the K8B reference capture,
+sub-channel~1 (mYTN video).  ``Sync-aligned'' is our fix; the legacy
+column is the implementation that runs the deinterleaver before sync
+search.}
+\label{tab:rs}
+\begin{tabular}{lrr}
+\toprule
+Metric & Legacy & Sync-aligned (this work) \\
+\midrule
+RS blocks total                 & 25\,953 & 25\,953 \\
+RS ok (zero errors)             & 0       & 0 \\
+RS corrected ($\leq8$ bytes)    & 0       & 22\,652 \\
+RS uncorrectable                & 25\,953 & 3\,301 \\
+\textbf{Success rate}           & \textbf{0.0\,\%} & \textbf{87.3\,\%} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The remaining 13\% of uncorrectable blocks correspond to bursty
+errors that exceed the $t=8$ correction limit; these are concentrated
+near CIF boundaries and during occasional fade-induced SNR dips.
+At the slice level, FFmpeg's macroblock-level error concealment
+successfully reconstructs visually-coherent frames.
+
+% ====================================================================
+\section{SL Demultiplexing}\label{sec:sl}
+
+The transport stream emerging from the RS decoder carries four logical
+PIDs (Table~\ref{tab:pids}).  PID~\texttt{0x113} contains the video
+elementary stream packetised first into MPEG-4 SL packets and then
+into MPEG-2 PES with \texttt{stream\_id} = \texttt{0xFA}
+(``MPEG-4 SL-packetised stream'').  Each PES carries exactly one SL
+packet, and each SL packet contains exactly one H.264 NAL unit
+(without start-code prefix).
+
+\begin{table}[t]
+\centering
+\caption{PID assignment recovered from the YTN DMB K8B ensemble.}
+\label{tab:pids}
+\begin{tabular}{lll}
+\toprule
+PID & Carried stream & Packet count in 2 min \\
+\midrule
+\texttt{0x100} & PMT                              & 212 \\
+\texttt{0x111} & ObjectDescriptor sections (\texttt{tid}=0x04) & 224 \\
+\texttt{0x112} & SceneDescription sections (\texttt{tid}=0x05) & 220 \\
+\texttt{0x113} & Video PES, SL-packetised         & 16\,397 \\
+\texttt{0x114} & Audio PES, SL-packetised (BSAC)  & 4\,916 \\
+\texttt{0x1FFF} & Null padding                     & 457 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{SL header layout}
+
+Reading the ISO/IEC 14496-1 specification of
+\texttt{SLPacketHeader()} \cite{iso14496-1} along with the FFmpeg
+\texttt{read\_sl\_header()} implementation in \texttt{dmb-oss}, the
+maximum-length AU-start header for the Korean T-DMB profile contains:
+
+\begin{align*}
+\text{header bits} \;=\; & 1 \;(\text{au\_start}) + 1 \;(\text{au\_end}) + 1 \;(\text{padding}) + \\
+                         & 1 \;(\text{rand\_acc\_pt}) + 1 \;(\text{dts\_flag}) + 1 \;(\text{cts\_flag}) + \\
+                         & 33 \;(\text{DTS}) + 33 \;(\text{CTS}) \\
+                       =\; & 72 \; \text{bits} \;=\; 9 \; \text{bytes exactly}.
+\end{align*}
+
+We confirm this empirically on \emph{every one} of the 3\,135 SL
+packets in our reference capture: each PES body starts with the byte
+\texttt{0xCF} (=$0b11001111$, decoding to
+\{au\_start,au\_end\}=\{1,1\}, \{padding,rand\_acc\_pt\}=\{0,0\},
+\{dts\_flag,cts\_flag\}=\{1,1\}, plus two high bits of DTS), followed
+by 8 more bytes of timestamp fields, after which byte~9 is the NAL
+header of a single H.264 NAL unit.
+
+\subsection{NAL stream}
+
+After stripping the 9-byte SL header from every PES we obtain a stream
+of bare H.264 NAL bytes.  The NAL header histogram on our reference
+capture is dominated by non-IDR slices (3\,038) with periodic IDR
+slices (97), giving a Group-of-Pictures (GoP) length of roughly~32 ---
+typical for a 30\,fps QVGA broadcast.  No SPS or PPS NAL units are
+present in the elementary stream, which is consistent with
+AVCC-style storage where decoder configuration is carried out-of-band.
+
+% ====================================================================
+\section{Locating the AVC Decoder Configuration Record}
+\label{sec:avcc}
+
+In standard MPEG-4 Systems, the H.264 \texttt{AVCDecoderConfigurationRecord}
+(which contains the SPS and PPS NAL units required to bootstrap the
+decoder) is transported inside the Object-Descriptor stream as part of a
+\texttt{DecoderSpecificInfo} descriptor~\cite{iso14496-1}.  In the YTN
+DMB capture we observe the opposite: the OD-stream sections on
+PID~\texttt{0x111} contain only DMB-private commands with user-defined
+tags (\texttt{0xC0}--\texttt{0xFE}, the ``Annex K user-private'' range);
+the actual AVCC bytes appear inside the Scene-Description /
+BIFS section stream on PID~\texttt{0x112}.
+
+Our locator scans the SD-stream byte stream for the AVCC signature
+$$\texttt{01}\;\langle\textit{profile}\rangle\;\langle\textit{compat}\rangle
+   \;\langle\textit{level}\rangle\;\texttt{FF}\;\texttt{E1}\;
+   \langle\textit{SPS\_len}\rangle\;\langle\textit{SPS}\rangle\;
+   \texttt{01}\;\langle\textit{PPS\_len}\rangle\;\langle\textit{PPS}\rangle$$
+constraining profile to a known H.264 value
+(\texttt{0x42}/\texttt{0x4D}/\texttt{0x58}/\texttt{0x64}/\texttt{0x6E}),
+level to $[\texttt{0x09},\texttt{0x42}]$, the
+\texttt{lengthSizeMinusOne}/reserved byte to the form
+$\texttt{FC}|x$, and the \texttt{numOfSPS}/reserved byte to
+$\texttt{E0}|n$ with $n=1$.  This signature is sufficient to
+uniquely identify the record amid the surrounding BIFS commands.  On
+the K8B reference capture the recovered record is:
+
+\begin{lstlisting}
+SPS (9 B):  67 42 00 0d 95 a0 50 7c 40
+PPS (4 B):  68 ce 38 80
+            -- profile_idc = 0x42 (Baseline)
+            -- level_idc   = 0x0d (Level 1.3)
+\end{lstlisting}
+
+Prepending these as Annex-B NAL units to the extracted slice stream
+produces a fully self-contained H.264 byte stream that FFmpeg
+identifies as \texttt{Baseline 320x240 25\,fps yuv420p}.
+
+% ====================================================================
+\section{Reproducibility and Metadata}\label{sec:reproducibility}
+
+\begin{table}[t]
+\centering
+\caption{Reference capture metadata (excerpt of the JSON sidecar
+\texttt{data/captures/k8b\_100pct.json}).}
+\label{tab:capture-meta}
+\begin{tabular}{ll}
+\toprule
+Field & Value \\
+\midrule
+Channel              & K8B \\
+Frequency            & 183.008\,MHz \\
+Sample rate          & 3\,MSPS \\
+Gain mode            & Airspy hardware AGC \\
+Bias-tee             & off \\
+Antenna              & Brisa flat-panel indoor with USB-powered LNA \\
+Antenna spec (claimed)& 30\,dBi composite gain, 5\,m coax feed \\
+Location             & Seoul metropolitan area, indoor near window \\
+File                 & 30.8\,MB, 5\,014 ETI frames ($\sim$120\,s) \\
+FIB success rate     & 100\,\% \\
+Ensemble label       & YTN DMB (EId 0xE040) \\
+Services decoded     & 5 (mYTN, HD mYTN, 4DRIVE, LOTTE, EWS) \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Every capture taken with the bundled \texttt{tools/capture\_logged.py}
+wrapper produces a JSON sidecar with the schema illustrated in
+Table~\ref{tab:capture-meta}.  The reference captures shipped with the
+artefact have been retro-fitted with sidecars from build-system records.
+
+% ====================================================================
+\section{Related work}\label{sec:related}
+
+The closest predecessor is Eo and Bahk~\cite{eo2024tdmb}, who use
+\texttt{gr-dab} for the DAB layer and a patched FFmpeg for the
+T-DMB-specific decoding, and who explicitly document several of the
+gotchas we re-encountered (deinterleaver sync alignment, missing
+composition timestamps, SL packet header parsing).  Their work
+remains the canonical reference for the encoding chain.  By contrast
+this work emphasises packaging (a single Python package with
+documented API) and reproducibility (per-capture metadata sidecars,
+a single one-shot decoder script, no run-time FFmpeg modification).
+
+\texttt{welle.io}~\cite{welleio} is a high-quality cross-platform DAB
+audio receiver, but does not decode the T-DMB video stream type.
+\texttt{eti-cmdline}~\cite{etistuff} (from which we re-use the OFDM
+and Viterbi back-end via a small patch) outputs ETI(NI) frames only
+and was the starting point for our work.  An earlier portable hardware
+implementation is described by Lee~et~al.~\cite{lee2007portable},
+and the Korean T-DMB system as a whole is documented in
+\cite{ttak0026,etsi102427,etsi102428,hwang2015simulator,iso14496-1}.
+
+% ====================================================================
+\section{Conclusion}\label{sec:conclusion}
+
+We have presented, to the best of our knowledge, the first packaged
+end-to-end open-source software receiver for Korean Terrestrial DMB.
+The pipeline takes a 3\,MSPS I/Q capture from an Airspy~Mini SDR and
+produces a playable H.264 video file using only freely-distributable
+components.  Two implementation lessons stand out: (i)~the Forney
+deinterleaver must be aligned to the TS sync byte \emph{before}
+processing rather than after, and (ii)~Korean broadcasters embed the
+H.264 AVCC inside the BIFS/SceneDescription stream, not the
+ObjectDescriptor stream as MPEG-4 Systems prescribes.  Either lesson
+silently breaks an otherwise-correct implementation.  The code,
+captures, and metadata schema are released to allow further research
+on T-DMB and on its now-encrypted HD~DMB successor.
+
+% ====================================================================
+\section*{Code and data availability}
+The Python package, capture tooling, reference ETI capture, decoded
+IDR thumbnails, and this paper's source live at
+\url{https://github.com/zobithecat/airspy-mini-dmb}.  All code is MIT-licensed;
+the reference RF capture is released under CC-BY-4.0.
+
+\section*{Acknowledgements}
+We rely on, and are grateful for, the prior open-source work of
+Jan van Katwijk (\texttt{eti-stuff}), Albrecht Lohofener et al.\
+(\texttt{welle.io}), and Sungbo Eo and Saewoong Bahk
+(\texttt{dmb-oss}).
+
+\section*{Author contributions and use of AI}
+\textbf{Seonggeun Yoo} (primary author) conceived the project,
+captured all RF data, made every experimental and design decision,
+diagnosed the sync-alignment failure on real captures, validated
+results visually, and edited the manuscript.
+\textbf{Claude} (Anthropic, large language model) acted as a
+paired-programming and drafting collaborator throughout: it wrote
+much of the initial Python implementation, reverse-engineered the
+Korean T-DMB SL-packet header layout from the raw byte patterns
+present in our captures, located the AVC
+\texttt{DecoderConfigurationRecord} embedded in the BIFS stream,
+and produced the first draft of this paper.  Per the arXiv AI
+disclosure guidelines, we emphasise that all code, results, and
+prose were reviewed by the primary author before submission and
+the primary author takes full responsibility for the work.
+
+% ====================================================================
+\printbibliography
+
+\end{document}
