@@ -1,5 +1,16 @@
 # Airspy Mini · Korean T-DMB receiver
 
+<p align="center">
+  <img src="paper/figures/idr_sample_1.png" alt="Decoded IDR frame 1 — YTN DMB (K8B, 183.008 MHz)" width="320" />
+  &nbsp;&nbsp;
+  <img src="paper/figures/idr_sample_2.png" alt="Decoded IDR frame 2 — YTN DMB" width="320" />
+</p>
+
+<p align="center"><sub>
+실제 K8B (YTN DMB, 183.008 MHz) on-air 캡처에서 본 코드만으로 디코드한 H.264 IDR 프레임 두 장.
+가장자리 매크로블록 노이즈는 RS(204,188) 정정 한계(13%)를 넘은 블록의 흔적 — ffmpeg error concealment.
+</sub></p>
+
 Airspy Mini로 한국 T-DMB(DAB Mode I + MPEG-4) 신호를 수신·복조·파싱하는
 Python 패키지. RF 캡처와 OFDM 복조는 패치된
 [`eti-cmdline-airspy`](https://github.com/JvanKatwijk/eti-stuff)에 위임하고,
