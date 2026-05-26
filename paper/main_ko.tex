@@ -319,8 +319,9 @@ Bahk~\cite{eo2024tdmb}가 부수적으로 보고한 ``디인터리버는 TS 패�
 \label{fig:phasehist}
 \end{figure}
 
-표~\ref{tab:rs}는 YTN DMB의 K8B 참조 캡처(FIB CRC 100\%, 약 2분 분량)에
-대한 결과를 비교한다.
+표~\ref{tab:rs}는 YTN DMB의 K8B 참조 캡처(FIB CRC 패스율 75\%, 앙상블
+완전 복원, 약 120\,s 분량; 신논현 측정지에서 추정 SNR
+$\hat{\mathrm{SNR}}\approx 13$\,dB)에 대한 결과를 비교한다.
 
 \begin{table}[t]
 \centering
@@ -485,9 +486,11 @@ FFmpeg의 오류 은닉이 공간적으로 일관된 프레임을 복원한다.}
 Bias-tee              & off \\
 안테나                & Brisa 평판형 실내 안테나 (USB 전원 LNA 내장) \\
 안테나 명목 사양      & 30\,dBi 총 이득, 5\,m 동축 급전 \\
-캡처 장소             & 수도권 서울, 실내 창가 \\
-파일                  & 30.8\,MB, 5{,}014 ETI 프레임 (약 120\,s) \\
-FIB 성공률            & 100\,\% \\
+캡처 장소             & 서울 서초구 신논현 (실내 창가) \\
+추정 SNR              & $\sim$13\,dB \\
+파일                  & 30.8\,MB, 5{,}016 ETI 프레임 (약 120\,s) \\
+FIB CRC 패스율        & 75.0\,\% (15{,}042 / 20{,}064) \\
+앙상블 복원           & 완전 복원 (정적 FIG 모두 중복 송신으로 회수) \\
 앙상블 라벨           & YTN DMB (EId 0xE040) \\
 디코딩된 서비스 수    & 5개 (mYTN, HD mYTN, 4DRIVE, LOTTE, EWS) \\
 \bottomrule

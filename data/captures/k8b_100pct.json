@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "tag": "k8b_100pct",
-  "notes": "FIB 100% reference capture used for Stage 3 verification. Recorded prior to per-capture metadata logging, params reconstructed from build script + commit history.",
+  "notes": "Reference capture used for Stage 3 verification. Tag '100pct' refers to complete ensemble recovery (all 5 services labeled), NOT FIB CRC pass rate. Recorded prior to per-capture metadata logging; params reconstructed from build script + commit history and verified by re-running tools/dump_fic.py 2026-05-26.",
   "rf": {
     "channel": "K8B",
     "frequency_hz": 183008000,
@@ -10,20 +10,24 @@
     "operator": "YTN DMB (mYTN/HD mYTN/4DRIVE/LOTTE/EWS)",
     "gain_mode": "agc_hardware",
     "bias_tee": false,
-    "sample_rate": 3000000
+    "sample_rate": 3000000,
+    "estimated_snr_db": 13
   },
   "environment": {
     "antenna": "Brisa flat-panel indoor TV antenna with USB-powered LNA",
     "antenna_amplifier_powered": true,
-    "location": "Seoul metropolitan area, indoor near window",
+    "location": "Sinnonhyeon (신논현), Seocho-gu, Seoul, Republic of Korea — indoor near window",
     "indoor": true
   },
   "capture": {
     "file_bytes": 30818304,
-    "eti_frames": 5014,
+    "eti_frames": 5016,
     "duration_sec_actual": 120,
-    "fib_success_rate_pct": 100.0,
+    "fib_ok": 15042,
+    "fib_total": 20064,
+    "fib_success_rate_pct": 74.97,
     "ensemble_recognized": true,
+    "ensemble_recovery_complete": true,
     "decoded_ensemble": {
       "id": "0xE040",
       "label": "YTN DMB",

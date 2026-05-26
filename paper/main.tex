@@ -195,7 +195,8 @@ literature.  Concretely:
 \item A pure-Python implementation of the T-DMB outer FEC chain
       (RS(204,188) over $GF(2^8)$ with DVB-T polynomial plus a
       $12\times17$ Forney deinterleaver) that achieves 87.3\% block
-      success on a reference Korean K8B capture with FIB CRC 100\%.
+      success on a reference Korean K8B capture (75\% FIB CRC pass
+      rate, complete ensemble recovery).
 \item An open-source Python implementation of the sync-byte-aligned
       Forney deinterleaver path noted by Eo and
       Bahk~\cite{eo2024tdmb} as the cause of failed RS decoding in
@@ -368,7 +369,9 @@ blocks (96.3\%); all other phases are at noise-floor level.}
 \end{figure}
 
 Table~\ref{tab:rs} reports the result on the YTN-DMB K8B reference
-capture (FIB CRC 100\%, $\sim$2\,minutes of content).
+capture (75\% FIB CRC pass rate, complete ensemble recovery,
+$\sim$120\,s of content; $\hat{\mathrm{SNR}}\approx 13$\,dB at the
+capture site in Sinnonhyeon, Seoul).
 
 \begin{table}[t]
 \centering
@@ -543,9 +546,11 @@ Gain mode            & Airspy hardware AGC \\
 Bias-tee             & off \\
 Antenna              & Brisa flat-panel indoor with USB-powered LNA \\
 Antenna spec (claimed)& 30\,dBi composite gain, 5\,m coax feed \\
-Location             & Seoul metropolitan area, indoor near window \\
-File                 & 30.8\,MB, 5\,014 ETI frames ($\sim$120\,s) \\
-FIB success rate     & 100\,\% \\
+Location             & Sinnonhyeon, Seocho-gu, Seoul (indoor near window) \\
+Estimated SNR        & $\sim$13\,dB \\
+File                 & 30.8\,MB, 5\,016 ETI frames ($\sim$120\,s) \\
+FIB CRC pass rate    & 75.0\,\% (15\,042 / 20\,064) \\
+Ensemble recovery    & complete (all static FIGs received via redundancy) \\
 Ensemble label       & YTN DMB (EId 0xE040) \\
 Services decoded     & 5 (mYTN, HD mYTN, 4DRIVE, LOTTE, EWS) \\
 \bottomrule

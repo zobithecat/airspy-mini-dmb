@@ -283,10 +283,11 @@ stream produces a self-contained H.264 byte stream that
 \section{Experimental Verification}
 
 We exercise the chain on \texttt{data/captures/k8b\_100pct.eti}
-(30~MB; $\sim$120~s; FIB CRC rate 100\%), captured with an
+(30~MB; $\sim$120~s; FIB CRC pass rate 75.0\%, complete ensemble
+recovery; $\hat{\mathrm{SNR}}\approx 13$~dB), captured with an
 Airspy~Mini and a consumer indoor flat-panel antenna with a
-USB-powered amplifier from a window in the Seoul metropolitan
-area.  Table~\ref{tab:results} summarises end-to-end yields.
+USB-powered amplifier from a window in Sinnonhyeon, Seoul.
+Table~\ref{tab:results} summarises end-to-end yields.
 
 \begin{table}[t]
 \centering
@@ -296,8 +297,9 @@ area.  Table~\ref{tab:results} summarises end-to-end yields.
 \toprule
 Stage & Output \\
 \midrule
-ETI frames decoded                       & 5{,}014 \\
-FIB CRC success                          & 100\,\% \\
+ETI frames decoded                       & 5{,}016 \\
+FIB CRC pass rate                        & 75.0\,\% (15{,}042 / 20{,}064) \\
+Ensemble recovery                        & complete (5 services) \\
 RS blocks corrected (this work)          & 22{,}652 / 25{,}953 (87.3\%) \\
 Clean TS packets emitted                 & 22{,}652 \\
 SL-packet PES parsed (PID 0x113)         & 3{,}135 / 3{,}135 \\
