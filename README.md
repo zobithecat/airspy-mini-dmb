@@ -10,8 +10,8 @@ ETI 프레임 파싱·FIC 디코드·MSC 추출·외부 FEC·TS 분석은 모두
 | Stage | 상태 | 설명 |
 |---|---|---|
 | **1** | ✅ 완료 | ETI 파싱 + FIC 디코드 → ensemble / 서비스 / 서브채널 |
-| **2** | ✅ 코드 완료, RF 검증 미완 | RS(204,188) + Forney 12×17 컨볼루셔널 디인터리버 |
-| **3** | ⏸ 대기 | T-DMB MPEG-4 SL 디먹스 + H.264 + BSAC 재생 |
+| **2** | ✅ 완료 (RS 87.3% on FIB-100% capture) | RS(204,188) + Forney 12×17 컨볼루셔널 디인터리버 |
+| **3** | ✅ 완료 — 비디오 디코드 확인 | T-DMB MPEG-4 SL 디먹스 + H.264 ES + AVCC 추출 + ffmpeg 재생 |
 
 ### 1번 단계 검증
 실제 K8B(183.008 MHz) 신노현 수신 → **YTN DMB ensemble (EId 0xE040)**.
@@ -30,26 +30,57 @@ ETI 캡처 23 MB에서 1254 frames, FIB OK 50–79% (SNR 9 dB).
 
 ### 2번 단계 검증
 - 합성 클린 데이터: 200 패킷 인 → 189 패킷 아웃, RS 성공 200/200 ✓
-- 실제 RF: 0/5002 RS 성공 — BER ~7%가 RS(t=8)의 정정 한계 초과
-- 결론: 파이프라인 자체는 정확. 신호 SNR이 14 dB+ 되어야 통함.
+- **실제 RF (k8b_100pct.eti, FIB 100%): RS 성공 22,652/25,953 = 87.3% ✓**
+  - 이전 버전 0% 실패 → Eo & Bahk 2024 인사이트 반영:
+    *"the deinterleaver requires the sync byte of a TS packet to be the
+    first in an input byte chunk."* `tdmb.fec.outer` 가 0x47 위상(=offset
+    160 within 204-cycle) 을 먼저 찾고, 거기서부터 deinterleaver 를 피드.
+- 결론: 파이프라인 정확. FIB 70%+ 캡처라면 비디오 디코드 가능.
 
-### 3번 단계의 실체
-한국 T-DMB 비디오는 4겹으로 wrapping됨:
+### 3번 단계 검증 — 비디오 디코드 성공
+한국 T-DMB 비디오는 5겹으로 wrapping됨:
 
 ```
-H.264 → MPEG-4 SL packet → MPEG-2 PES → MPEG-2 TS (188B) → MSC sub-channel
+H.264 NAL → MPEG-4 SL packet (header 9B) → MPEG-2 PES (stream_id=0xFA)
+         → MPEG-2 TS (PID 0x113, 188B)   → RS(204,188)+TI 외부 FEC
+         → MSC sub-channel
 ```
 
-추출한 PES에서 `stream_id=0xfa` (SL-packetized) 확인 — 93개 PES. 일반
-ffmpeg는 이걸 풀 수 없고 (NAL start code도 안 나옴), 별도 SL/OD 디먹서
-필요. `tools/extract_sl_h264.py` 가 SL→H.264 ES 추출하는 직접 경로 제공.
+`k8b_100pct.eti` (30 MB, FIB 100%) 로 end-to-end 디코드 확인:
 
-5분 K8B 캡처 분석 (SNR 12-14 dB, FIB 75%):
-- 4 ensemble 동시 디코드 (YTN/MBC/U-KBS/SBSu) → Stage 1 견고
-- TS slot-sync 96.4% — 거의 모든 188B TS 바이트는 보임
-- SL-PES 93개 발견, but H.264 NAL bytes는 bit-error로 노이즈에 묻힘
-  (raw 6.2 MB에서 plausible SPS 0개, MSC EEP-3A 정정 한계 초과)
-- 코드 자체는 정확. **SNR 14 dB sustained** (현재 16% 시간만) 필요
+| 단계 | 결과 |
+|---|---|
+| RS+TI 외부 FEC | 22,652 / 25,953 blocks = 87.3% 성공 |
+| TS 패킷 | 클린 22,652개 (PID 0x113=video, 0x114=audio, 0x111/0x112=OD/SD) |
+| SL→NAL 추출 | 3,135 PES → 3,135 NAL (실패 0): non-IDR 3,038 / IDR 97 |
+| AVCC (SPS+PPS) | SD/BIFS stream (PID 0x112) 에서 추출 |
+| ffmpeg 디코드 | **320×240 QVGA, H.264 Baseline L1.3, 25fps, YTN DMB 컨텐츠 ✓** |
+
+SL 패킷 헤더 (한국 T-DMB 프로파일, AU-start 시):
+```
+Byte 0     : 0xCF 고정 (au_start=1, au_end=1, padding=0,
+                       rand_acc=0, dts_flag=1, cts_flag=1 + 2 bits CTS hi)
+Bytes 0..8 : 6-bit flags + 33-bit DTS + 33-bit CTS = 72 bits = 9 bytes 정확히
+Bytes 9..N : ONE H.264 NAL unit (no start code prefix, NAL header 첫 바이트)
+```
+
+AVCDecoderConfigurationRecord는 OD stream 이 아니라 **SD/BIFS stream
+(PID 0x112)** 에 임베드됨 (Korean T-DMB-specific):
+```
+01 42 00 0d ff e1 00 09 <SPS 9B> 01 00 04 <PPS 4B>
+   ^^profile (Baseline)
+      ^^level (1.3)
+```
+
+`tools/decode_video.py` 가 위 전체 파이프라인을 한 번에 실행:
+```sh
+python tools/decode_video.py data/captures/k8b_100pct.eti \
+  --subch 1 --out-h264 /tmp/video.h264 --out-mp4 /tmp/video.mp4 \
+  --idr-thumbnails /tmp/idr   # IDR 프레임 PNG 추출
+```
+
+남은 비트에러 (13% RS 실패) 는 ffmpeg의 error concealment 가 처리.
+SNR 16 dB+ 캡처라면 100% RS 성공 → 깨끗한 비디오 가능.
 
 ## 빌드 / 설치
 
@@ -105,10 +136,23 @@ DYLD_LIBRARY_PATH=/opt/homebrew/lib \
 ### ETI 분석 도구
 ```sh
 python tools/dump_fic.py capture.eti              # ensemble + services
-python tools/extract_ts.py capture.eti --subch 1  # RS+TI 시도
+python tools/extract_ts_rs.py capture.eti --subch 1 --out clean.ts
+                                                  # sync-aligned RS+TI → 클린 188B TS
 python tools/extract_ts_direct.py capture.eti --subch 1 --out video.ts
-                                                  # 204-byte 슬롯에서 188 TS 직접 추출
+                                                  # RS 우회: 204-byte 슬롯에서 188 TS 직접
+python tools/extract_sl_h264_v2.py clean.ts --video-pid 0x113 --out video.h264
+                                                  # SL 헤더 9B 제거 → H.264 NAL ES
+python tools/extract_avcc_from_sd.py clean.ts \
+       --sd-pid 0x112 --h264-in video.h264 --out video_full.h264
+                                                  # SD/BIFS에서 SPS+PPS 찾아 prepend
+python tools/decode_video.py capture.eti --subch 1 \
+       --out-mp4 video.mp4 --idr-thumbnails /tmp/idr
+                                                  # 위 모두 합친 end-to-end 파이프라인
+python tools/verify_outer_fec.py capture.eti 1    # RS+TI 성공률 검증
 python tools/scan.py                              # 한국 21채널 풀스캔
+python tools/band_sweep.py                        # Band III 광대역 PSD 스윕
+python tools/iq_analyze.py iq.raw --fs 6000000    # raw I/Q PSD/null/ADC 분석
+python tools/gain_sweep.py --channel K12C         # R820T2 L/M/V 게인 매트릭스
 ```
 
 ### 한국 T-DMB 채널 (수도권 송출)
@@ -137,15 +181,28 @@ src/tdmb/
   fec/
     interleaver.py  — Forney 12×17 conv. deinterleaver
     rs.py           — Reed-Solomon (204,188) decoder (DVB params)
-    outer.py        — 통합 RS+TI 파이프라인
+    outer.py        — 통합 RS+TI 파이프라인 (sync-byte aligned)
   gui/app.py        — PyQt6 메인 윈도우
 tools/
-  dump_fic.py       — ETI 캡처에서 ensemble 덤프
-  extract_ts.py     — RS+TI 디코더로 TS 패킷 추출
-  extract_ts_direct.py — RS 우회, 204-byte 슬롯의 188 TS 부분 직접 추출
-  scan.py           — 21개 한국 채널 sequential lock 시도
+  dump_fic.py            — ETI 캡처에서 ensemble 덤프
+  extract_ts.py          — 레거시 RS+TI 시도 (sync 안 맞춤; 권장 X)
+  extract_ts_rs.py       — sync-aligned RS+TI → 클린 188B TS ★
+  extract_ts_direct.py   — RS 우회, 204-byte 슬롯의 188 TS 부분 직접 추출
+  extract_sl_h264_v2.py  — SL 헤더 9B 제거 → H.264 NAL ES ★
+  extract_avcc_from_sd.py— SD/BIFS stream에서 AVCDecoderConfigRecord 추출 ★
+  decode_video.py        — 위 모든 단계 통합 end-to-end (ETI → H.264/MP4) ★
+  verify_outer_fec.py    — RS+TI 성공률 + sync offset 진단
+  inject_pmt_full.py     — 합성 PMT+IOD 삽입 (dmb-ffmpeg 인식용)
+  scan.py                — 21개 한국 채널 sequential lock 시도
+  band_sweep.py          — Band III 광대역 PSD 스윕 (best-bump 채널 찾기)
+  iq_analyze.py          — raw I/Q PSD + DAB null + ADC fill 분석
+  null_detect.py         — DAB Mode I 96 ms 주기 null 정밀 검출
+  gain_sweep.py          — R820T2 L/M/V 게인 매트릭스 자동 sweep
+  snr_monitor.py         — 실시간 in-band/edge SNR + DAB lock 표시기
+  build_dmb_ffmpeg.sh    — dmb-oss FFmpeg (BSAC + SL OD) 빌드
 patches/
   eti-cmdline-macos-arm64.patch
+  airspy-handler-extras.patch — AIRSPY_RATE / LNA / MIXER / VGA env vars
 ```
 
 ## 알려진 사항

@@ -29,17 +29,17 @@ sys.path.insert(0, str(REPO / "src"))
 from tdmb.channels import by_name
 
 
-def measure_psd(freq_hz: int, gain: int = 14, samples: int = 6_000_000):
+def measure_psd(freq_hz: int, gain: int = 14, samples: int = 6_000_000, bias: bool = False):
     """Capture 1 second of I/Q and return (in_band_db, edge_db, delta_db, null_period_ms)."""
     iq_path = "/tmp/snr_iq.bin"
     fs = 6_000_000
     # Use airspy_rx to capture (1 second = 6 M samples at 6 MSPS)
-    subprocess.run(
-        ["airspy_rx", "-r", iq_path, "-f", str(freq_hz / 1e6),
-         "-a", str(fs), "-h", str(gain),
-         "-t", "2", "-n", str(samples)],
-        check=False, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
-    )
+    cmd = ["airspy_rx", "-r", iq_path, "-f", str(freq_hz / 1e6),
+           "-a", str(fs), "-h", str(gain),
+           "-t", "2", "-n", str(samples)]
+    if bias:
+        cmd += ["-b", "1"]
+    subprocess.run(cmd, check=False, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     if not os.path.exists(iq_path) or os.path.getsize(iq_path) < 1000:
         return None
     raw = np.fromfile(iq_path, dtype="<i2").astype(np.float32) / 32768.0
@@ -125,6 +125,7 @@ def main() -> int:
     src.add_argument("--channel", help="Korean channel (e.g. K8B)")
     src.add_argument("--freq", type=float, help="frequency in MHz")
     ap.add_argument("--gain", type=int, default=14)
+    ap.add_argument("--bias", action="store_true", help="enable bias-tee (powers LNA)")
     ap.add_argument("--interval", type=float, default=1.5,
                     help="seconds between measurements (longer = more samples)")
     args = ap.parse_args()
@@ -146,7 +147,7 @@ def main() -> int:
     t0 = time.time()
     try:
         while True:
-            r = measure_psd(freq_hz, gain=args.gain)
+            r = measure_psd(freq_hz, gain=args.gain, bias=args.bias)
             if r is None:
                 print("  ⚠ airspy_rx returned no data", flush=True)
                 time.sleep(1)

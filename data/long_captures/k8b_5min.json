@@ -1,0 +1,26 @@
+{
+  "schema_version": 1,
+  "tag": "k8b_5min",
+  "notes": "5-minute K8B capture, FIB ~75%. Used for time-variation analysis.",
+  "rf": {
+    "channel": "K8B",
+    "frequency_hz": 183008000,
+    "frequency_mhz": 183.008,
+    "raster": "Korean K-block (1.728 MHz spacing)",
+    "operator": "YTN DMB",
+    "gain_mode": "agc_hardware",
+    "bias_tee": false,
+    "sample_rate": 3000000
+  },
+  "environment": {
+    "antenna": "Brisa flat-panel indoor TV antenna with USB-powered LNA",
+    "antenna_amplifier_powered": true,
+    "location": "Seoul metropolitan area, indoor near window",
+    "indoor": true
+  },
+  "capture": {
+    "file_bytes": 77049856,
+    "duration_sec_actual": 300,
+    "fib_success_rate_pct": 75.0
+  }
+}

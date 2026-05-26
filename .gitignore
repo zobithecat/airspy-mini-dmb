@@ -22,15 +22,19 @@ eti-stuff/
 build/
 local/
 
-# Captured RF / ETI data
+# Captured RF / ETI data — binary payloads excluded; JSON metadata
+# sidecars (data/**/*.json) are allowed so the artefact bundle stays
+# self-describing.  Note: do NOT exclude directories themselves
+# (e.g. `data/captures/`) — that would block git from descending into
+# them and the `!*.json` negation below would never fire.
 data/scan/
-data/captures/
 *.eti
 *.iq
 *.bin
 *.ts
 
-# Generated ensemble JSON dumps (from eti-cmdline -J)
+# Generated ensemble JSON dumps (from eti-cmdline -J) — these are produced
+# automatically next to each capture and aren't reproducibility metadata.
 ensemble-ch-*.json
 
 # Local settings
