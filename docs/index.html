@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>airspy-mini-dmb — Open-source Korean T-DMB receiver</title>
+<meta name="description" content="첫 완전 재현 가능한 한국형 T-DMB 수신기. SDR 기반, Python 구현, CC-BY 캡처 데이터 + 메타데이터 사이드카 포함.">
+<style>
+  :root {
+    --fg:#1a1a1a; --fg-muted:#5a5a5a; --bg:#fafafa; --bg-card:#fff;
+    --border:#e4e4e4; --accent:#0a6e6e; --accent-hi:#058686;
+    --maxw:880px; --r:6px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --fg:#e4e4e4; --fg-muted:#999; --bg:#161616; --bg-card:#1f1f1f;
+            --accent:#5fc7c7; --accent-hi:#8be0e0; --border:#2a2a2a; }
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0;padding:0;background:var(--bg);color:var(--fg);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue","Apple SD Gothic Neo","Noto Sans CJK KR",sans-serif;
+    font-size:16px;line-height:1.6}
+  main{max-width:var(--maxw);margin:0 auto;padding:48px 24px 96px}
+  h1{font-size:1.9rem;margin:0 0 4px;letter-spacing:-.01em;font-weight:600}
+  h1 .sub{font-size:1.05rem;color:var(--fg-muted);font-weight:400;margin-left:6px}
+  h2{font-size:1.2rem;margin:40px 0 12px;padding-bottom:6px;border-bottom:1px solid var(--border);font-weight:600}
+  h3{font-size:1rem;margin:18px 0 4px;font-weight:600}
+  p{margin:0 0 12px}
+  a{color:var(--accent);text-decoration:none;border-bottom:1px solid transparent}
+  a:hover{color:var(--accent-hi);border-bottom-color:var(--accent-hi)}
+  .tagline{color:var(--fg-muted);margin-top:0;margin-bottom:24px;font-size:.95rem}
+  .muted{color:var(--fg-muted);font-size:.88rem}
+  .badges{margin:14px 0 28px}
+  .badges .b{display:inline-block;background:var(--bg-card);border:1px solid var(--border);
+    border-radius:var(--r);padding:3px 10px;margin:2px 4px 2px 0;font-size:.78rem;color:var(--fg-muted)}
+  .badges .b strong{color:var(--accent)}
+
+  .hero-imgs{display:flex;gap:12px;justify-content:center;margin:24px 0 8px;flex-wrap:wrap}
+  .hero-imgs img{max-width:300px;width:100%;border-radius:var(--r);
+    border:1px solid var(--border);box-shadow:0 2px 8px rgba(0,0,0,.04)}
+  .hero-caption{text-align:center;color:var(--fg-muted);font-size:.85rem;margin:0 0 28px}
+
+  .map-card{background:var(--bg-card);border:1px solid var(--border);
+    border-radius:var(--r);padding:18px;margin:18px 0 24px;text-align:center}
+  .map-card img{max-width:100%;border-radius:var(--r);border:1px solid var(--border)}
+  .map-card .cta{display:inline-block;background:var(--accent);color:#fff;padding:8px 18px;
+    border-radius:var(--r);margin-top:12px;font-size:.92rem;border:0}
+  .map-card .cta:hover{background:var(--accent-hi);color:#fff;border:0}
+
+  .links{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px;margin:14px 0}
+  .card{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--r);padding:14px 16px}
+  .card h3{margin-top:0}
+  .card p{margin:4px 0;font-size:.9rem;color:var(--fg-muted)}
+
+  code{font-family:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace;
+    font-size:.85em;background:rgba(0,0,0,.06);padding:1px 5px;border-radius:3px}
+  pre{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--r);
+    padding:12px 14px;overflow-x:auto;font-size:.82rem;line-height:1.5}
+  pre code{background:none;padding:0}
+
+  ul.findings{padding-left:18px}
+  ul.findings li{margin:6px 0;font-size:.93rem}
+  ul.findings li code{font-size:.85em}
+
+  table{width:100%;border-collapse:collapse;font-size:.88rem;margin:8px 0}
+  th{text-align:left;padding:6px 8px 6px 0;border-bottom:1px solid var(--border);font-weight:600;color:var(--fg-muted)}
+  td{padding:5px 8px 5px 0;border-bottom:1px dotted var(--border);vertical-align:top}
+
+  footer{margin-top:48px;padding-top:18px;border-top:1px solid var(--border);
+    text-align:center;color:var(--fg-muted);font-size:.82rem}
+
+  @media (max-width:520px){
+    main{padding:28px 16px 56px}
+    h1{font-size:1.5rem}
+    h1 .sub{display:block;margin-left:0;margin-top:2px}
+  }
+</style>
+</head>
+<body>
+<main>
+
+<header>
+  <h1>airspy-mini-dmb <span class="sub">— Open-source Korean T-DMB receiver</span></h1>
+  <p class="tagline">
+    한국형 지상파 T-DMB 신호를 SDR 로 종단간 수신·복조·디코드하는 Python 패키지.
+    K-block 채널 raster, sync-aligned RS+TI, MPEG-4 SL header layout, AVCC location 등
+    영문권에 처음 공개되는 운용사 단계 deployment 디테일 + CC-BY 참조 캡처 + JSON 메타데이터 사이드카.
+  </p>
+  <div class="badges">
+    <span class="b">📡 K8B 183.008 MHz (YTN DMB)</span>
+    <span class="b"><strong>87.3%</strong> RS success</span>
+    <span class="b">SDR-agnostic (Airspy / RTL-SDR)</span>
+    <span class="b">MIT (code) + CC-BY (capture)</span>
+  </div>
+</header>
+
+<section>
+  <div class="hero-imgs">
+    <img src="idr_sample_1.png" alt="Decoded IDR frame 1 from K8B / YTN DMB capture">
+    <img src="idr_sample_2.png" alt="Decoded IDR frame 2 from K8B / YTN DMB capture">
+  </div>
+  <p class="hero-caption">
+    실제 K8B 신호를 SDR + 본 코드만으로 디코드한 H.264 IDR 프레임 두 장.
+    가장자리 매크로블록 노이즈는 RS(204,188) 정정 한계(~13%) 를 넘은 블록의 흔적
+    — FFmpeg 매크로블록-수준 오류 은닉의 시각화.
+  </p>
+</section>
+
+<h2>전국 T-DMB 송신소 지도 (인터랙티브)</h2>
+<div class="map-card">
+  <a href="tdmb_tx_map.html"><img src="tdmb_tx_map.png" alt="Korean T-DMB transmitter map preview"></a>
+  <div>
+    <a href="tdmb_tx_map.html" class="cta">인터랙티브 지도 열기 →</a>
+  </div>
+  <p class="muted" style="margin-top:14px">
+    21 개 T-DMB 송신소를 6 개 권역으로 색상 분류.  K8B 수도권 5 송신소
+    (남산·관악산·용문산·광교산·운중) 에서 본 프로젝트 reference capture
+    위치 (신논현) 까지 SFN 도달 경로를 빨간 점선으로 시각화.
+    각 송신소 팝업: 위치 / 운영사 / 채널·주파수 / 신논현까지 km.
+  </p>
+</div>
+
+<h2>주요 발견 / 기여 (영문권 첫 공개)</h2>
+<ul class="findings">
+  <li>한국 <strong>K-block raster</strong>: 6 MHz VHF TV 채널 ÷ 3 = 1.728 MHz 간격
+    (ETSI 표준 1.712 MHz 와 다름). <code>eti-cmdline</code> band-handler 패치 필요.</li>
+  <li><strong>Sync-aligned Forney 디인터리버</strong>: 0x47 phase 정렬을 deinterleaver
+    BEFORE 에 해야 함.  K8B 캡처에서 0% → 87.3% RS 성공률.</li>
+  <li><strong>9-byte SL packet header</strong>: 한국 운용사의 SLConfigDescriptor 프로파일
+    (au_start=au_end=dts=cts=1, timeStampLength=33) 의 결과.  PES body 첫 byte 가 항상 <code>0xCF</code>.
+    3,135 PES 검증.</li>
+  <li><strong>AVCDecoderConfigurationRecord 위치</strong>: 표준 MPEG-4 Systems 의 OD 스트림
+    (PID 0x111) 이 아니라 <strong>SD/BIFS 스트림 (PID 0x112)</strong> 에 임베드.
+    K8B YTN DMB 운용사 선택.</li>
+  <li><strong>SFN multipath shallow nulls</strong>: 신논현 등 metro 위치에서 5 K8B SFN 송신소
+    가 null 구간을 채워 envelope dip 이 ~0.72-0.82 μ (교과서 ~0.1-0.3 μ 와 다름).
+    Adaptive threshold 필수.</li>
+</ul>
+
+<h2>리소스 / 링크</h2>
+<div class="links">
+  <div class="card">
+    <h3>📄 GitHub 저장소</h3>
+    <p><a href="https://github.com/zobithecat/airspy-mini-dmb">github.com/zobithecat/airspy-mini-dmb</a></p>
+    <p>전체 코드 + 캡처 데이터 (Git LFS) + paper 소스</p>
+  </div>
+  <div class="card">
+    <h3>🦀 dab-rs (sister project)</h3>
+    <p><a href="https://github.com/zobithecat/dab-rs">github.com/zobithecat/dab-rs</a></p>
+    <p>같은 receiver chain 의 순수 Rust 재구현 — DAB Mode I OFDM demodulator 포함</p>
+  </div>
+  <div class="card">
+    <h3>📜 Paper (영문 long version)</h3>
+    <p><a href="https://github.com/zobithecat/airspy-mini-dmb/blob/main/paper/main.tex">paper/main.tex</a></p>
+    <p>arXiv eess.SP 제출 예정.  Black-box rediscovery framing + ETRI 2004 인용.</p>
+  </div>
+  <div class="card">
+    <h3>📜 한글 논문</h3>
+    <p><a href="https://github.com/zobithecat/airspy-mini-dmb/blob/main/paper/main_ko.tex">paper/main_ko.tex</a></p>
+    <p>JPEE 또는 한국방송공학회 제출용 한글 버전.</p>
+  </div>
+  <div class="card">
+    <h3>📜 ICCE 2027 short</h3>
+    <p><a href="https://github.com/zobithecat/airspy-mini-dmb/blob/main/paper/icce2027/main.tex">paper/icce2027/main.tex</a></p>
+    <p>IEEE Conference 4-page short version.</p>
+  </div>
+  <div class="card">
+    <h3>📡 Reference capture (CC-BY)</h3>
+    <p><a href="https://github.com/zobithecat/airspy-mini-dmb/tree/main/data/captures">data/captures/</a></p>
+    <p><code>k8b_100pct.eti</code> (30 MB) + <code>k8b_strong.iq</code> (240 MB, Git LFS).</p>
+  </div>
+</div>
+
+<h2>30-초 시연</h2>
+<pre><code>git clone https://github.com/zobithecat/airspy-mini-dmb.git
+cd airspy-mini-dmb
+git lfs pull
+python tools/decode_video.py data/captures/k8b_100pct.eti \
+  --subch 1 --out-mp4 /tmp/k8b.mp4 --idr-thumbnails /tmp/idr
+# → /tmp/k8b.mp4 (2.4 MB, H.264 Baseline 320x240, 25 fps)
+# → /tmp/idr/idr_*.png (20 IDR thumbnails)
+</code></pre>
+<p class="muted">
+  RF 하드웨어 없이도 검증 가능 — reference 캡처가 CC-BY 로 공개되어 있어
+  전 세계 어디서든 한국 K-block 신호의 종단간 디코드를 재현 가능.
+</p>
+
+<h2>검증 / 캡처 통계</h2>
+<table>
+<thead><tr><th>캡처</th><th>SNR</th><th>RS 성공</th><th>용도</th></tr></thead>
+<tbody>
+<tr><td><code>k8b_100pct.eti</code></td><td>~13 dB</td><td>87.3 % (22652/25953)</td><td>비디오 디코드 oracle</td></tr>
+<tr><td><code>k8b_strong.iq</code></td><td>~5 dB (cu8)</td><td>0 / 2587</td><td>dab-rs OFDM oracle (Stage 1-7)</td></tr>
+<tr><td><code>k8b_rust.iq</code></td><td>~7 dB</td><td>0 / 2587</td><td>초기 OFDM sync 시도 (퇴역)</td></tr>
+</tbody>
+</table>
+
+<h2>저자 / 라이선스</h2>
+<p>
+  <strong>Seonggeun Yoo</strong> (zobithecat)
+  — <a href="https://zobithecat.github.io/">homepage</a>
+  · <a href="https://github.com/zobithecat">GitHub</a>
+</p>
+<p class="muted">
+  코드: MIT &nbsp;·&nbsp; 캡처 데이터: CC-BY-4.0 &nbsp;·&nbsp; Paper 소스: CC-BY-4.0
+</p>
+
+<footer>
+  Generated 2026 · <a href="https://github.com/zobithecat/airspy-mini-dmb">repository</a> ·
+  <a href="tdmb_tx_map.html">transmitter map</a>
+</footer>
+
+</main>
+</body>
+</html>

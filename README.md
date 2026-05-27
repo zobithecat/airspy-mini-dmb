@@ -181,7 +181,7 @@ ETSI 표준 채널은 1.712 MHz 간격이지만, 한국은 6 MHz TV 채널을
 ### 전국 T-DMB 송신소 지도
 
 <p align="center">
-  <a href="https://cdn.jsdelivr.net/gh/zobithecat/airspy-mini-dmb@main/docs/tdmb_tx_map.html">
+  <a href="https://zobithecat.github.io/airspy-mini-dmb/tdmb_tx_map.html">
     <img src="paper/figures/tdmb_tx_map.png" alt="대한민국 T-DMB 송신소 지도 — 21개 송신소, 6개 권역" width="720" />
   </a>
 </p>
@@ -190,10 +190,16 @@ ETSI 표준 채널은 1.712 MHz 간격이지만, 한국은 6 MHz TV 채널을
 21개 T-DMB 송신소를 6개 권역(수도권/강원/충청/영남/호남/제주)으로 색상 분류.
 수도권 5개 K8B 송신소(남산·관악산·용문산·광교산·운중)에서 본 프로젝트의 reference
 capture 위치(신논현)로 빨간 점선이 SFN 신호 도달 경로를 시각화한다.
-이미지를 클릭하면 <a href="https://cdn.jsdelivr.net/gh/zobithecat/airspy-mini-dmb@main/docs/tdmb_tx_map.html">인터랙티브 Leaflet 지도</a>로 이동
+이미지를 클릭하면 <a href="https://zobithecat.github.io/airspy-mini-dmb/tdmb_tx_map.html">인터랙티브 Leaflet 지도</a>로 이동
 (각 송신소 팝업에 위치/운영사/채널·주파수/신논현까지 km 표시).
 원본 HTML: <code>docs/tdmb_tx_map.html</code> 또는 <code>paper/figures/tdmb_tx_map.html</code>.
 좌표는 산봉우리·송신탑 위치 추정치 (정밀 측량값 아님).
+</sub></p>
+
+<p align="center"><sub>
+🌐 <strong>프로젝트 랜딩 페이지</strong>:
+<a href="https://zobithecat.github.io/airspy-mini-dmb/">zobithecat.github.io/airspy-mini-dmb</a>
+— 디코드 결과 미리보기, paper 링크, dab-rs 자매 프로젝트, 캡처 다운로드, 30 초 demo 안내.
 </sub></p>
 
 ## 패키지 구조
