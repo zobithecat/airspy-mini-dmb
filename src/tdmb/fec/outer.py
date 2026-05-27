@@ -125,8 +125,17 @@ class KoreanTDmbOuterFec:
     # ------------------------------------------------------------------
     def _try_align(self) -> None:
         """Score each of 204 phases by 0x47 hit-rate; lock if any phase
-        clearly dominates (>40% of expected slots) and is far above the
-        chance background (~0.4% for random bytes)."""
+        clearly dominates the background.
+
+        Two acceptance paths:
+          High-SNR (k8b_100pct ~13 dB):  best > 40% of blocks AND
+                                          best > 5× rank2.
+          Low-SNR  (k8b_rust   ~7  dB):  best > 10% of blocks AND
+                                          best > 15× rank2.
+        The ratio-based path catches weak captures where bit errors
+        corrupt enough 0x47 bytes to drag the hit rate below 40%, but
+        where the surviving 0x47 cadence at the correct phase is still
+        a runaway winner vs. random background (~0.5%/phase)."""
         buf = self._presync_buf
         n = len(buf)
         n_blocks = n // RS_BLOCK_SIZE
@@ -135,21 +144,22 @@ class KoreanTDmbOuterFec:
         scores = [0] * RS_BLOCK_SIZE
         for k in range(n_blocks):
             base = k * RS_BLOCK_SIZE
-            # Tally 0x47 occurrences only at the candidate phases (full sweep)
             for ph in range(RS_BLOCK_SIZE):
                 if buf[base + ph] == 0x47:
                     scores[ph] += 1
         best = max(range(RS_BLOCK_SIZE), key=lambda p: scores[p])
-        # Demand convincing dominance: best phase hit > 40% of blocks
-        # AND > 5× the second-best (otherwise we're seeing random matches).
         sorted_hits = sorted(scores, reverse=True)
         first, second = sorted_hits[0], sorted_hits[1]
-        if first < max(8, n_blocks * 0.4):
+        # Path 1: classic high-SNR criterion
+        if first >= max(8, n_blocks * 0.40) and first >= second * 5:
+            self._phase_offset = best
+            self._aligned = True
             return
-        if first < second * 5:
+        # Path 2: low-SNR ratio-based criterion
+        if first >= max(8, n_blocks * 0.10) and first >= second * 15:
+            self._phase_offset = best
+            self._aligned = True
             return
-        self._phase_offset = best
-        self._aligned = True
 
     def _feed_aligned_initial(self) -> Iterator[TsPacket]:
         """First call after alignment: trim presync buffer to the 0x47
