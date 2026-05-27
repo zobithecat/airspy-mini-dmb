@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>대한민국 지상파 T-DMB 송신소 지도</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<style>
+  :root {
+    --fg:#1a1a1a; --fg-muted:#5a5a5a; --bg:#fafafa; --bg-card:#fff;
+    --border:#e4e4e4; --accent:#0a6e6e; --r:6px;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue","Apple SD Gothic Neo","Noto Sans CJK KR",sans-serif;background:var(--bg);color:var(--fg);font-size:14px;line-height:1.5}
+  header{padding:16px 24px;background:var(--bg-card);border-bottom:1px solid var(--border)}
+  header h1{margin:0 0 4px;font-size:1.3rem}
+  header .sub{color:var(--fg-muted);font-size:.85rem}
+  main{display:grid;grid-template-columns:1fr 360px;gap:0;height:calc(100vh - 75px)}
+  #map{height:100%;width:100%}
+  aside{height:100%;overflow-y:auto;background:var(--bg-card);border-left:1px solid var(--border);padding:14px 16px}
+  aside h2{font-size:.95rem;margin:18px 0 6px;padding-bottom:4px;border-bottom:1px solid var(--border);color:var(--accent)}
+  aside h2:first-child{margin-top:0}
+  table{width:100%;border-collapse:collapse;font-size:.78rem}
+  table th{text-align:left;color:var(--fg-muted);font-weight:500;padding:4px 6px 4px 0;border-bottom:1px dotted var(--border)}
+  table td{padding:3px 6px 3px 0;border-bottom:1px dotted var(--border);vertical-align:top}
+  table tr.row-clickable{cursor:pointer}
+  table tr.row-clickable:hover{background:#f0f6f6}
+  .tag{display:inline-block;padding:1px 5px;border-radius:3px;font-size:.7rem;color:#fff;margin-right:2px}
+  .legend{position:absolute;bottom:18px;left:18px;background:rgba(255,255,255,.95);padding:10px 14px;border-radius:var(--r);border:1px solid var(--border);font-size:.8rem;z-index:1000;line-height:1.7}
+  .legend .swatch{display:inline-block;width:11px;height:11px;border-radius:50%;margin-right:6px;vertical-align:middle;border:2px solid #fff;box-shadow:0 0 0 1px #888}
+  .leaflet-popup-content{font-family:inherit;font-size:.85rem;line-height:1.5}
+  .leaflet-popup-content h3{margin:0 0 4px;font-size:.95rem;color:var(--accent)}
+  .leaflet-popup-content .pop-loc{color:var(--fg-muted);font-size:.78rem;margin-bottom:6px}
+  .leaflet-popup-content .ch{font-family:ui-monospace,"SF Mono",Menlo,monospace;font-size:.78rem;background:#f0f0f0;padding:1px 4px;border-radius:3px;display:inline-block;margin:1px 2px 1px 0}
+  footer{padding:10px 16px;font-size:.72rem;color:var(--fg-muted);background:var(--bg-card);border-top:1px solid var(--border)}
+  footer a{color:var(--accent)}
+  @media (max-width:900px){main{grid-template-columns:1fr;grid-template-rows:60vh 1fr}aside{border-left:none;border-top:1px solid var(--border)}}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>대한민국 지상파 T-DMB 송신소 지도</h1>
+  <div class="sub">한국형 K-block raster (1.728&nbsp;MHz 간격, 6&nbsp;MHz TV 채널 × 3 분할). 위키백과 (<a href="https://ko.wikipedia.org/wiki/%EB%8C%80%ED%95%9C%EB%AF%BC%EA%B5%AD%EC%9D%98_%EC%A7%80%EC%83%81%ED%8C%8CDMB" target="_blank">대한민국의 지상파DMB</a>) 기준. 좌표는 산봉우리 / 송신탑 추정치이며 정밀 측량값 아님.</div>
+</header>
+
+<main>
+  <div id="map"></div>
+  <aside id="list"></aside>
+</main>
+
+<div class="legend">
+  <div><span class="swatch" style="background:#d62728"></span>수도권</div>
+  <div><span class="swatch" style="background:#1f77b4"></span>강원권</div>
+  <div><span class="swatch" style="background:#2ca02c"></span>충청권</div>
+  <div><span class="swatch" style="background:#ff7f0e"></span>영남권</div>
+  <div><span class="swatch" style="background:#9467bd"></span>호남권</div>
+  <div><span class="swatch" style="background:#8c564b"></span>제주권</div>
+  <div><span class="swatch" style="background:#000;border:2px solid #fff;box-shadow:0 0 0 1px #000"></span>capture 위치 (신논현)</div>
+</div>
+
+<footer>
+  생성: 2026-05 · <a href="https://github.com/zobithecat/airspy-mini-dmb">airspy-mini-dmb</a> 의 paper Section II 참고 자료
+</footer>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+// K-block 주파수 매핑 (1.728 MHz 간격, K7A = 175.280 MHz 시작)
+const FREQ = {
+  "7A": 175.280, "7B": 177.008, "7C": 178.736,
+  "8A": 181.280, "8B": 183.008, "8C": 184.736,
+  "11A": 199.280, "11B": 201.008, "11C": 202.736,
+  "12A": 205.280, "12B": 207.008, "12C": 208.736,
+  "13A": 211.280, "13B": 213.008, "13C": 214.736,
+};
+
+// 송신소 데이터.  위/경도는 산봉우리 / 송신탑 위치 추정치.
+const SITES = {
+  "수도권": {color:"#d62728", sites:[
+    {name:"남산",     loc:"서울 용산구",   lat:37.5512, lon:126.9882, ops:"MBC·KBS·SBS·YTN", chs:["12A","12B","12C","8B"]},
+    {name:"관악산",   loc:"경기 안양시",   lat:37.4422, lon:126.9656, ops:"MBC·KBS·SBS·YTN", chs:["12A","12B","12C","8B"]},
+    {name:"용문산",   loc:"경기 양평군",   lat:37.5575, lon:127.5919, ops:"MBC·KBS·SBS·YTN", chs:["12A","12B","12C","8B"]},
+    {name:"광교산",   loc:"경기 용인시",   lat:37.3406, lon:127.0114, ops:"MBC·KBS·SBS·YTN", chs:["12A","12B","12C","8B"]},
+    {name:"운중(청계산)",loc:"경기 성남시",lat:37.4172, lon:127.0689, ops:"MBC·KBS·SBS·YTN", chs:["12A","12B","12C","8B"]},
+  ]},
+  "강원권": {color:"#1f77b4", sites:[
+    {name:"대룡산",   loc:"강원 춘천시",   lat:37.8639, lon:127.7967, ops:"KBS·MBC·G1", chs:["13B"]},
+    {name:"백운산",   loc:"강원 원주시",   lat:37.3022, lon:128.0344, ops:"KBS·MBC·G1", chs:["13B"]},
+    {name:"태기산",   loc:"강원 횡성군",   lat:37.5567, lon:128.1419, ops:"KBS·MBC·G1", chs:["13B"]},
+    {name:"괘방산",   loc:"강원 강릉시",   lat:37.7886, lon:128.9772, ops:"KBS·MBC·G1", chs:["13B"]},
+  ]},
+  "충청권": {color:"#2ca02c", sites:[
+    {name:"식장산",   loc:"대전 동구",     lat:36.3208, lon:127.4994, ops:"KBS·MBC·TJB", chs:["11A","11B","11C"]},
+    {name:"우암산",   loc:"충북 청주시",   lat:36.6431, lon:127.5089, ops:"KBS·MBC·CJB", chs:["11A","11B","11C"]},
+    {name:"가엽산",   loc:"충북 음성군",   lat:36.9694, lon:127.6736, ops:"KBS·MBC·CJB", chs:["11A","11B","11C"]},
+  ]},
+  "영남권": {color:"#ff7f0e", sites:[
+    {name:"황령산",   loc:"부산 부산진구", lat:35.1369, lon:129.0739, ops:"KBS·MBC·KNN", chs:["12A","12B","12C"]},
+    {name:"무룡산",   loc:"울산 북구",     lat:35.6033, lon:129.3856, ops:"KBS·MBC·KNN", chs:["12A","12B","12C"]},
+    {name:"불모산",   loc:"경남 창원시",   lat:35.1839, lon:128.6961, ops:"KBS·MBC·KNN", chs:["12A","12B","12C"]},
+  ]},
+  "호남권": {color:"#9467bd", sites:[
+    {name:"무등산",   loc:"광주 동구",     lat:35.1342, lon:126.9886, ops:"KBS·MBC·KBC", chs:["8A","8B","8C"]},
+    {name:"모악산",   loc:"전북 김제시",   lat:35.7383, lon:127.0858, ops:"KBS·MBC·KBC", chs:["12A","12B","12C"]},
+    {name:"노고단",   loc:"전남 구례군",   lat:35.2828, lon:127.5078, ops:"KBS·MBC·KBC", chs:["12A","12B","12C"]},
+  ]},
+  "제주권": {color:"#8c564b", sites:[
+    {name:"견월악",   loc:"제주 제주시",   lat:33.4392, lon:126.6011, ops:"KBS·MBC·JIBS", chs:["13A","13B","13C"]},
+    {name:"삼매봉",   loc:"제주 서귀포시", lat:33.2389, lon:126.5611, ops:"KBS·MBC·JIBS", chs:["8A","8B","8C"]},
+  ]},
+};
+
+// capture 위치 (신논현)
+const CAPTURE = {name:"airspy-mini-dmb capture", loc:"신논현, 서울 서초구 (k8b_100pct.eti)", lat:37.5045, lon:127.0247};
+
+// 거리 계산 (Haversine)
+function distKm(la1, lo1, la2, lo2){
+  const R=6371, toR=Math.PI/180;
+  const dLa=(la2-la1)*toR, dLo=(lo2-lo1)*toR;
+  const a=Math.sin(dLa/2)**2 + Math.cos(la1*toR)*Math.cos(la2*toR)*Math.sin(dLo/2)**2;
+  return R*2*Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+}
+
+// 맵 초기화
+const map = L.map('map').setView([36.5, 127.8], 7);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  maxZoom: 18,
+  attribution: '© <a href="https://www.openstreetmap.org/copyright">OSM</a> contributors'
+}).addTo(map);
+
+// 사이트 마커
+const aside = document.getElementById('list');
+const markers = {};
+
+Object.entries(SITES).forEach(([region, {color, sites}]) => {
+  const sec = document.createElement('div');
+  sec.innerHTML = `<h2>${region}</h2>`;
+  const tbl = document.createElement('table');
+  tbl.innerHTML = `<thead><tr><th>송신소</th><th>위치</th><th>운영사</th><th>채널</th><th>↔ 신논현</th></tr></thead><tbody></tbody>`;
+  const tbody = tbl.querySelector('tbody');
+
+  sites.forEach(s => {
+    const m = L.circleMarker([s.lat, s.lon], {
+      radius: 8, color:'#fff', weight:2, fillColor:color, fillOpacity:.95
+    }).addTo(map);
+    const chHtml = s.chs.map(c => `<span class="ch">K${c} · ${FREQ[c]?.toFixed(3)}&nbsp;MHz</span>`).join('');
+    const d = distKm(s.lat, s.lon, CAPTURE.lat, CAPTURE.lon);
+    m.bindPopup(`
+      <h3>${s.name}</h3>
+      <div class="pop-loc">${s.loc} · ${s.lat.toFixed(4)}, ${s.lon.toFixed(4)}</div>
+      <div><strong>운영:</strong> ${s.ops}</div>
+      <div style="margin-top:4px"><strong>채널:</strong><br>${chHtml}</div>
+      <div style="margin-top:6px;color:#5a5a5a;font-size:.78rem">신논현 capture 위치 ↔ ${d.toFixed(1)} km</div>
+    `);
+    markers[s.name] = m;
+
+    const tr = document.createElement('tr');
+    tr.className = 'row-clickable';
+    tr.innerHTML = `
+      <td><span class="tag" style="background:${color}">${s.name}</span></td>
+      <td style="font-size:.72rem;color:var(--fg-muted)">${s.loc}</td>
+      <td style="font-size:.72rem">${s.ops}</td>
+      <td style="font-family:ui-monospace,monospace;font-size:.72rem">${s.chs.map(c => 'K'+c).join(' ')}</td>
+      <td style="font-size:.72rem;color:var(--fg-muted)">${d.toFixed(0)}&nbsp;km</td>
+    `;
+    tr.addEventListener('click', () => {
+      map.setView([s.lat, s.lon], 11, {animate:true});
+      m.openPopup();
+    });
+    tbody.appendChild(tr);
+  });
+
+  sec.appendChild(tbl);
+  aside.appendChild(sec);
+});
+
+// capture 위치 (검은색 X 마커)
+const capMarker = L.marker([CAPTURE.lat, CAPTURE.lon], {
+  icon: L.divIcon({
+    className: 'cap-marker',
+    html: '<div style="background:#000;color:#fff;border:3px solid #fff;border-radius:50%;width:18px;height:18px;box-shadow:0 0 0 1px #000;font-size:.65rem;text-align:center;line-height:14px">📡</div>',
+    iconSize:[18,18], iconAnchor:[9,9]
+  })
+}).addTo(map);
+capMarker.bindPopup(`
+  <h3>📡 ${CAPTURE.name}</h3>
+  <div class="pop-loc">${CAPTURE.loc}</div>
+  <div>K8B 183.008 MHz 수신 (YTN DMB EId 0xE040)</div>
+  <div style="margin-top:4px;font-size:.78rem;color:#5a5a5a">2026-05 paper 의 reference capture 좌표</div>
+`);
+
+// K8B 송신소들 (남산/관악산/용문산/광교산/운중) 에서 capture 위치로 라인 그리기
+const k8bSources = SITES["수도권"].sites;
+k8bSources.forEach(s => {
+  L.polyline([[s.lat, s.lon], [CAPTURE.lat, CAPTURE.lon]], {
+    color: '#d62728', weight:1.2, opacity:.45, dashArray:'4,4'
+  }).addTo(map);
+});
+
+// 통계 박스
+const stats = document.createElement('div');
+const totalSites = Object.values(SITES).reduce((a,r)=>a+r.sites.length,0);
+const allChs = new Set();
+Object.values(SITES).forEach(r => r.sites.forEach(s => s.chs.forEach(c => allChs.add(c))));
+stats.innerHTML = `
+  <h2>요약</h2>
+  <div style="font-size:.78rem;line-height:1.7">
+    <div>송신소: <strong>${totalSites}개</strong></div>
+    <div>사용 채널: <strong>${[...allChs].sort().map(c=>'K'+c).join(', ')}</strong></div>
+    <div>주파수 범위: <strong>${Math.min(...[...allChs].map(c=>FREQ[c])).toFixed(3)} – ${Math.max(...[...allChs].map(c=>FREQ[c])).toFixed(3)}&nbsp;MHz</strong></div>
+    <div style="margin-top:6px;color:var(--fg-muted)">K-block raster = 6&nbsp;MHz 아날로그 TV ch ÷ 3, 1.728&nbsp;MHz 간격</div>
+  </div>
+`;
+aside.insertBefore(stats, aside.firstChild);
+</script>
+</body>
+</html>
