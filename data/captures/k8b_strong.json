@@ -1,0 +1,118 @@
+{
+  "schema_version": 1,
+  "tag": "k8b_strong",
+  "notes": "Higher-SNR K8B raw I/Q capture (2026-05-27) intended as a stock-eti-stuff-compatible OFDM oracle for dab-rs Stage 4-7 validation. Replaces k8b_rust.iq (SNR ~7 dB, stock eti-stuff failed to lock). PSD contrast +25.5 dB peak vs outer-5% noise floor (vs +21.6 dB in k8b_rust), confirming substantially stronger antenna chain at the same Sinnonhyeon location. However, the null/µ ratio is structurally shallow (median 0.78 across 83 frames, range 0.72-0.82) due to 5-transmitter SFN multipath fill — a documented gotcha (#4) that is a LOCATION characteristic, not an SNR characteristic. Empirically stock eti-cmdline-rawfiles still locks despite this (its time-sync algorithm is more permissive than the static 0.50·sLevel comparison suggests — sLevel itself adapts), producing 502 ETI frames and identifying the full ensemble (EId 0xE040 YTN DMB + all 5 SubCh + 4-5 services). However, FIB CRC pass rate is low (10.9%) and the outer T-DMB RS chain decodes 0/2587 blocks: the 8-bit cu8 quantization (required for the eti-cmdline-rawfiles input format) loses 4-5 dB of effective SNR relative to native int16 processing, dropping us below the RS correction threshold. Net effect: usable as an OFDM/inner-FEC oracle (Stages 1-7 of dab-rs), NOT usable for end-to-end video decode (would need the 12-bit native pipeline of eti-cmdline-airspy with the original Brisa+LNA setup that produced k8b_100pct.eti at SNR ~13 dB).",
+  "rf": {
+    "channel": "K8B",
+    "frequency_hz": 183008000,
+    "frequency_mhz": 183.008,
+    "raster": "Korean K-block (1.728 MHz spacing)",
+    "operator": "YTN DMB",
+    "gain_mode": "manual",
+    "lna_gain": 14,
+    "mixer_gain": 15,
+    "vga_gain": 15,
+    "bias_tee": false,
+    "sample_rate": 3000000,
+    "sample_format": "INT16_IQ",
+    "estimated_snr_psd_db": 25.5,
+    "estimated_snr_eti_stuff_db": 5
+  },
+  "environment": {
+    "antenna": "upgraded antenna chain (improved over 41 cm 1/4-lambda monopole used in k8b_rust)",
+    "antenna_amplifier_powered": false,
+    "location": "Sinnonhyeon (신논현), Seocho-gu, Seoul, Republic of Korea — indoor near window",
+    "indoor": true,
+    "sfn_multipath_note": "5 metro K8B SFN transmitters (Namsan ~5 km, Gwanaksan ~15 km, Yongmunsan ~44 km, Gwanggyosan ~24 km, Unjung ~10 km) all in line-of-sight or near-LOS; their delayed copies fill the OFDM null interval regardless of received signal strength. Null/µ stays at 0.72-0.82 with omnidirectional antenna. A directional Yagi pointing at Namsan would suppress 4 of the 5 to restore textbook null depth."
+  },
+  "capture": {
+    "file_bytes": 240000000,
+    "samples": 60000000,
+    "duration_sec_actual": 20.02,
+    "command": "airspy_rx -f 183.008 -a 3000000 -t 2 -l 14 -m 15 -v 15 -b 0 -n 60000000 -r data/captures/k8b_strong.iq"
+  },
+  "validation": {
+    "4_gate_validator": {
+      "tool": "tools/iq_validate_dab.py",
+      "verdict": "ALL GATES PASS",
+      "adc_fill_dbfs_12bit": -6.9,
+      "clipping_pct": 0.0,
+      "gate_1_psd": {
+        "in_band_mean_db": 38.2,
+        "in_band_peak_db": 52.2,
+        "edge_outer5_db": 26.6,
+        "delta_peak_outer5_db": 25.5,
+        "delta_mean_outer5_db": 11.6,
+        "pass": true
+      },
+      "gate_2_null": {
+        "n_dips": 209,
+        "n_near96ms": 207,
+        "median_gap_ms": 96.00,
+        "pass": true
+      },
+      "gate_3_cp_autocorr": {
+        "peak_corr": 0.215,
+        "lock_pct": 96,
+        "pass": true
+      }
+    },
+    "acceptance_criteria_assessment": {
+      "A_snr_geq_13_db": {
+        "criterion": "SNR >= 13 dB",
+        "measured_psd_delta_peak": 25.5,
+        "measured_eti_stuff_internal_snr": 5,
+        "verdict": "PARTIAL — PSD-based metric exceeds threshold, eti-stuff's internal OFDM SNR estimator says 5 dB (after cu8 quantization losses)"
+      },
+      "B_null_mu_leq_040": {
+        "criterion": "null/µ <= 0.40 (stock eti-stuff threshold compatibility)",
+        "measured_median": 0.78,
+        "measured_min": 0.43,
+        "measured_max": 0.82,
+        "frames_below_050_pct": 1,
+        "verdict": "FAIL — but empirically not blocking (eti-stuff still locked; see acceptance C). Confirms gotcha #4 is a structural location feature, not an SNR feature."
+      },
+      "C_stock_eti_full_decode": {
+        "criterion": "stock eti-cmdline-rawfiles produces ETI + ensemble JSON with YTN DMB EId 0xE040 and 5 services",
+        "tool_built": "eti-stuff/eti-cmdline/build-rawfiles/eti-cmdline-rawfiles (stock, no patches)",
+        "conversion": "scipy.signal.resample_poly(iq, 256, 375) → cu8 with 99.9%ile scaled to 0.85 of full range",
+        "eti_output_bytes": 3084288,
+        "eti_frames_produced": 502,
+        "ensemble_id_hex": "0xE040",
+        "ensemble_label": "YTN DMB",
+        "subchannels_detected": 4,
+        "services_detected": 5,
+        "service_list": ["mYTN (SubCh 1)", "(label-empty, HD mYTN) (SubCh 6)", "4DRIVE (packet mode)", "LOTTE Homeshop (SubCh 9)", "YTN EWS (FIDC SubCh 58)"],
+        "fib_ok_total": "218/2008",
+        "fib_pass_rate_pct": 10.9,
+        "eti_stuff_reported_snr_db": "4-5",
+        "eti_stuff_reported_fibquality_range": "9-21",
+        "verdict": "PASS — stock eti-stuff (no patches) decodes ensemble and full service list from this capture. Confirms the capture is a valid oracle for dab-rs Stages A (FEC/MSC/FIC) and the OFDM/inner-FEC pipeline (Stages 1-7)."
+      },
+      "downstream_rs_decode": {
+        "tool": "tdmb.fec.outer.KoreanTDmbOuterFec",
+        "aligned": true,
+        "phase_offset": 88,
+        "rs_total": 2587,
+        "rs_corrected": 0,
+        "rs_success_pct": 0,
+        "verdict": "FAIL — 0/2587 RS blocks correctable. BER exceeds t=8 RS correction limit on every block. Cause: cu8 quantization + SFN multipath + ~5 dB effective OFDM SNR. NOT a video-decode-quality capture."
+      }
+    },
+    "verdict_summary": "GOOD AS OFDM/INNER-FEC ORACLE FOR dab-rs (Stages 1-7). NOT USABLE FOR VIDEO DECODE (use k8b_100pct.eti for that)."
+  },
+  "intended_use_for_dab_rs": [
+    "Week 3c (Stage 4 NCO + integer carrier offset detection)",
+    "Week 3c (Stage 5 FFT framing per OFDM symbol)",
+    "Week 3d (Stage 6 PRS-based channel estimation/equalization)",
+    "Week 3e (Stage 7 π/4-DQPSK demap to soft bits, with +/-1 polarity convention from gotcha #1)",
+    "Stage B byte-identical cross-check (compare dab-rs Viterbi output to eti-stuff intermediate dump)",
+    "Stage C byte-identical cross-check (compare dab-rs per-symbol FFT spectrum to eti-stuff dump)",
+    "ETI-level cross-check (dab-rs end-to-end ETI output should match strong.eti from this capture)"
+  ],
+  "not_for": [
+    "End-to-end MP4 video decode demonstration — RS BER exceeds correction limit",
+    "FIB ≥ 50% reference — current FIB pass rate is only 10.9%",
+    "k8b_100pct.eti replacement — different SNR/RS quality"
+  ]
+}

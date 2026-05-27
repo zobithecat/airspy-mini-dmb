@@ -41,6 +41,7 @@ data/scan/
 # Git LFS (see .gitattributes).
 !data/captures/k8b_100pct.eti
 !data/captures/k8b_rust.iq
+!data/captures/k8b_strong.iq
 !data/long_captures/k8b_5min.eti
 
 # Generated ensemble JSON dumps (from eti-cmdline -J) — these are produced
