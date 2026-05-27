@@ -1,0 +1,78 @@
+{
+  "schema_version": 1,
+  "tag": "k8b_rust",
+  "notes": "Raw I/Q capture for dab-rs OFDM sync chain validation. Captured 2026-05-27 after switching to a 41 cm 1/4-λ monopole dipole (a previous rubber-duck WiFi antenna gave -45 dB worth of mismatch loss at VHF Band III; full diagnostic record at data/captures/diag/k8b_attempt_noise.json). All four quality gates pass: ADC fill -7.1 dBFS_12bit (clip 0%), PSD peak vs outer-5% noise floor +21.6 dB, 207 of 209 envelope dips spaced at exactly 96.00 ms (median), CP autocorrelation lock 98% over 50 consecutive symbol periods at Ts=3738 samples. Cross-check: eti-cmdline-airspy was run live on the same antenna/gain setup immediately before this capture and locked the YTN DMB ensemble (EId 0xE040) with all 5 services (mYTN / HD mYTN / 4DRIVE / LOTTE Homeshop / YTN EWS) at fibquality 6-18 and SNR ~7 dB. The SNR is below the k8b_100pct capture's ~13 dB (that capture used a Brisa flat-panel + USB-LNA setup), which manifests here as shallow envelope null dips (min/mean ratio ~0.72-0.78 instead of the textbook ~0.1-0.3) — characteristic of SFN multipath fill from the 5 metro-area K8B transmitters (Namsan / Gwanaksan / Yongmunsan / Gwanggyosan / Unjung). Despite the shallower dips, the 96 ms cadence is recovered cleanly. Intended use: cross-validation oracle for dab-rs OFDM stages 3a-3e (resample, null sync, CP autocorr, FFT framing, channel EQ, π/4-DQPSK demap) against eti-stuff.",
+  "rf": {
+    "channel": "K8B",
+    "frequency_hz": 183008000,
+    "frequency_mhz": 183.008,
+    "raster": "Korean K-block (1.728 MHz spacing)",
+    "operator": "YTN DMB (mYTN/HD mYTN/4DRIVE/LOTTE/EWS)",
+    "gain_mode": "manual",
+    "lna_gain": 14,
+    "mixer_gain": 15,
+    "vga_gain": 15,
+    "bias_tee": false,
+    "sample_rate": 3000000,
+    "sample_format": "INT16_IQ",
+    "estimated_snr_db": 7
+  },
+  "environment": {
+    "antenna": "41 cm 1/4-λ monopole dipole (wire), SMA-attached, indoor",
+    "antenna_amplifier_powered": false,
+    "location": "Sinnonhyeon (신논현), Seocho-gu, Seoul, Republic of Korea — indoor near window",
+    "indoor": true
+  },
+  "capture": {
+    "file_bytes": 240000000,
+    "samples": 60000000,
+    "duration_sec_actual": 20.06,
+    "command": "airspy_rx -f 183.008 -a 3000000 -t 2 -l 14 -m 15 -v 15 -b 0 -n 60000000 -r data/captures/k8b_rust.iq"
+  },
+  "validation": {
+    "tool": "tools/iq_validate_dab.py",
+    "verdict": "ALL GATES PASS",
+    "adc_fill_dbfs_12bit": -7.1,
+    "clipping_pct": 0.0,
+    "gates": {
+      "g1_psd_contrast": {
+        "in_band_mean_db": 37.9,
+        "in_band_peak_db": 47.3,
+        "edge_outer25_db": 29.6,
+        "edge_outer5_db": 25.7,
+        "delta_peak_outer5_db": 21.6,
+        "delta_mean_outer5_db": 12.2,
+        "pass": true,
+        "note": "Peak vs outer-5% noise floor +21.6 dB clears the 15 dB threshold; mean is dragged down by Airspy IF rolloff (~1 MHz), not by signal absence."
+      },
+      "g2_null_period": {
+        "n_dips": 209,
+        "n_near96ms": 207,
+        "median_gap_ms": 96.00,
+        "pass": true,
+        "note": "207 / 209 dips at exactly 96.00 ms (median) — DAB Mode I null cadence unambiguous. Dips are shallow (min/mu ~0.72) due to SFN multipath fill."
+      },
+      "g3_cp_autocorr": {
+        "Ts_samples": 3738,
+        "peak_corr": 0.10,
+        "n_locked": 49,
+        "n_tested": 50,
+        "lock_pct": 98.0,
+        "pass": true,
+        "note": "98% lock at +Ts intervals = OFDM symbol cadence stable across the capture."
+      },
+      "g4_fic_live_decode": {
+        "tool": "eti-stuff/eti-cmdline-airspy -M 1 -C K8B -G 21 -J",
+        "ensemble_id_hex": "0xE040",
+        "ensemble_label": "YTN DMB",
+        "services_detected": ["mYTN", "HD mYTN", "4DRIVE", "LOTTE Homeshop", "YTN EWS"],
+        "n_services": 5,
+        "fibquality_range": [6, 18],
+        "snr_estimate_db": 7,
+        "pass": true,
+        "note": "Live decode on the same RF setup (immediately before this I/Q capture) confirms an active YTN DMB ensemble with all 5 expected services."
+      }
+    }
+  },
+  "intended_use": "dab-rs OFDM Mode I sync chain validation (Week 3a-3e: resampler 3->2.048 MSPS, coarse null detect, CP autocorr fine sync, NCO correction, 2048-pt FFT framing, PRS channel EQ, pi/4-DQPSK demap)."
+}

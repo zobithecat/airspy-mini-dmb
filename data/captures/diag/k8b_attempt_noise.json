@@ -1,0 +1,66 @@
+{
+  "schema_version": 1,
+  "tag": "k8b_attempt_noise",
+  "status": "FAILED — diagnostic only, NOT usable for OFDM validation",
+  "notes": "Attempted K8B raw I/Q capture for dab-rs OFDM sync validation (2026-05-27). After 4 capture attempts with progressively higher gain (-h 21, -h 21 + bias, manual L14/M15/V15 + bias), K-block in-band PSD remained at the noise floor with no detectable DAB OFDM structure (PSD in/out delta ~11.5 dB, zero null-symbol dips per frame, CP autocorrelation peak < 0.15). All 9 Korean K-block channels (K7A..K12C) scanned with identical max-gain settings showed the same noise-floor pattern, ruling out a per-channel issue. FM band sanity check at 89.1 MHz (KBS 2FM) with the same hardware chain succeeded (peak PSD +37.1 dB, raw |max| 1125 of 2047, normal 12-bit ADC fill), confirming that the SDR + LNA + antenna + cable chain is electrically functional. The eti-cmdline-airspy live decoder run on K8B with hardware AGC printed `There does not seem to be a DAB signal here` after 20 s of acquisition. The K-block (Band III) reception path is therefore not delivering enough signal at the current physical setup. Probable causes are physical (antenna orientation, LNA USB power not connected, room placement away from window, different antenna than the k8b_100pct success run). This capture is preserved as a noise-floor reference for the current site only.",
+  "rf": {
+    "channel": "K8B",
+    "frequency_hz": 183008000,
+    "frequency_mhz": 183.008,
+    "raster": "Korean K-block (1.728 MHz spacing)",
+    "operator_expected": "YTN DMB (mYTN/HD mYTN/4DRIVE/LOTTE/EWS)",
+    "gain_mode": "manual_max",
+    "lna_gain": 14,
+    "mixer_gain": 15,
+    "vga_gain": 15,
+    "bias_tee": true,
+    "sample_rate": 3000000,
+    "sample_format": "INT16_IQ"
+  },
+  "environment": {
+    "antenna": "(verify — possibly differs from k8b_100pct setup)",
+    "antenna_amplifier_powered": "(verify — LNA USB power must be confirmed)",
+    "location": "(verify — must match k8b_100pct Sinnonhyeon indoor near window for K-block coverage)",
+    "indoor": true
+  },
+  "capture_command": "airspy_rx -f 183.008 -a 3000000 -t 2 -l 14 -m 15 -v 15 -b 1 -n 24000000 -r /tmp/k8b_man.iq",
+  "diagnostics": {
+    "duration_sec": 8.01,
+    "samples": 24000000,
+    "adc_fill_dbfs_12bit": -12.4,
+    "raw_int16_abs_max": 2550,
+    "psd_in_band_db": 29.7,
+    "psd_edge_db": 18.2,
+    "psd_delta_db": 11.5,
+    "psd_delta_required_db": 15.0,
+    "null_dips_per_frame": 0,
+    "null_dips_required_per_frame": 1,
+    "cp_autocorr_peak": 0.121,
+    "cp_autocorr_peak_required": 0.4,
+    "fic_lock_attempt": "There does not seem to be a DAB signal here (eti-cmdline-airspy)",
+    "gates_passed": "0/4"
+  },
+  "control_experiment": {
+    "fm_89_1_mhz": {
+      "rms": 0.0909,
+      "adc_fill_dbfs_12bit": -20.8,
+      "psd_peak_db": 37.1,
+      "psd_dynamic_range_db": 20.8,
+      "result": "PASS — confirms receive chain electrically functional"
+    },
+    "k_block_full_scan": {
+      "channels": ["K7A","K7B","K7C","K8A","K8B","K8C","K12A","K12B","K12C"],
+      "psd_delta_db_range": [11.3, 12.9],
+      "null_dips_any_channel": 0,
+      "result": "FAIL — all Band III channels at noise floor, no signal anywhere"
+    }
+  },
+  "next_steps_for_user": [
+    "Verify antenna is the Brisa flat-panel (or equivalent VHF Band III antenna) used in the successful k8b_100pct capture",
+    "Verify the USB cable powering the LNA is physically connected (separate from Airspy bias-tee)",
+    "Verify physical location matches the k8b_100pct success location (Sinnonhyeon indoor near window) — Band III coverage is highly position-sensitive",
+    "Verify antenna is oriented toward the transmitter (Namsan, generally south from Sinnonhyeon)",
+    "Once physical RF setup is confirmed equivalent to k8b_100pct, rerun capture with: airspy_rx -f 183.008 -a 3000000 -t 2 -l 14 -m 15 -v 15 -b 1 -n 60000000 -r data/captures/k8b_rust.iq (20 s, 240 MB)",
+    "Validate with: python tools/iq_validate_dab.py data/captures/k8b_rust.iq --fs 3000000"
+  ]
+}
