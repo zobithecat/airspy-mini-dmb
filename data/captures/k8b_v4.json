@@ -1,0 +1,124 @@
+{
+  "schema_version": 1,
+  "tag": "k8b_v4",
+  "notes": "★ FIRST FULL VIDEO DECODE at the new Sinnonhyeon site since k8b_100pct. Antenna at window + manual gain L14/M15/V12 (discovered via systematic gain sweep). 79.5% RS success — almost matches k8b_100pct's 87.3%. Decoded 916 KB H.264 MP4 with 51 IDR frames showing real-time YTN news content (e.g., '이란, 러군기지 보복 공격 / 나무호 II', '나무호 피격 관련성 부인'). All 5 services properly identified in FIC (mYTN, HD mYTN, 4DRIVE, LOTTE Homeshop, YTN EWS). fibquality 100 (perfect, vs k8b_v3's 95-99, k8b_v2's 47-78). This proves the upgraded antenna + window placement + manual gain L14/M15/V12 reaches the SNR threshold for robust video decode WITHOUT an LNA.",
+  "rf": {
+    "channel": "K8B",
+    "frequency_hz": 183008000,
+    "frequency_mhz": 183.008,
+    "raster": "Korean K-block (1.728 MHz spacing)",
+    "operator": "YTN DMB",
+    "gain_mode": "manual (optimal from sweep)",
+    "lna_gain": 14,
+    "mixer_gain": 15,
+    "vga_gain": 12,
+    "bias_tee": false,
+    "sample_rate": 3000000,
+    "sample_format": "INT16_IQ",
+    "estimated_snr_eti_stuff_db": 12,
+    "estimated_snr_psd_db": "TBD (run iq_validate_dab.py on k8b_v4.iq)"
+  },
+  "environment": {
+    "antenna": "upgraded antenna at window edge (same as k8b_v3)",
+    "antenna_amplifier_powered": false,
+    "location": "Sinnonhyeon (신논현), Seocho-gu, Seoul — indoor AT WINDOW",
+    "indoor": true,
+    "key_change_from_k8b_v3": "switched from -G 0 (AGC) to manual L14/M15/V12 (optimal point from systematic gain sweep)"
+  },
+  "gain_sweep_result_summary": {
+    "method": "25-second test capture per config, measured by RS corrected count from verify_outer_fec.py",
+    "best_config": "L14 M15 V12 (manual, AGC off)",
+    "results_per_25s": {
+      "-G 0 (AGC)":     {"rs_corrected": 241, "snr": 12, "fibquality": 100},
+      "-G 12 sens":     {"rs_corrected": 962, "snr": 12, "fibquality": 100},
+      "-G 13 sens":     {"rs_corrected": 2567, "snr": 13, "fibquality": 98},
+      "-G 14 sens":     {"rs_corrected": 1912, "snr": 12, "fibquality": 98},
+      "-G 15 sens":     {"rs_corrected": 556, "snr": 13, "fibquality": 99},
+      "-G 16 sens":     {"rs_corrected": 2431, "snr": 12, "fibquality": 100},
+      "-G 17 sens":     {"rs_corrected": 1546, "snr": 12, "fibquality": 99},
+      "-G 18 sens":     {"rs_corrected": 64, "snr": 12, "fibquality": 99},
+      "-G 21 sens":     {"rs_corrected": 304, "snr": 12, "fibquality": 98},
+      "L8 M8 V10":      {"rs_corrected": 2111, "snr": 12, "fibquality": 100},
+      "L10 M10 V10":    {"rs_corrected": 2078, "snr": 12, "fibquality": 100},
+      "L12 M12 V10":    {"rs_corrected": 1890, "snr": 12, "fibquality": 100},
+      "L13 M15 V12":    {"rs_corrected": 4115, "snr": 12, "fibquality": 100},
+      "L14 M14 V10":    {"rs_corrected": 1445, "snr": 13, "fibquality": 99},
+      "L14 M15 V11":    {"rs_corrected": 4172, "snr": 12, "fibquality": 100},
+      "L14 M15 V12":    {"rs_corrected": "4619-4852 (3 runs avg)", "snr": "12-13", "fibquality": 100},
+      "L14 M15 V13":    {"rs_corrected": 4363, "snr": 12, "fibquality": 100},
+      "L14 M15 V14":    {"rs_corrected": 3589, "snr": 12, "fibquality": 100}
+    },
+    "insight": "Hardware AGC (-G 0) is actually sub-optimal in this RF environment — it pushes mixer to a working level but VGA at default 10 leaves the small-signal regime under-amplified. Manual L14/M15/V12 dedicates LNA+mixer to their max (good NF at antenna), and VGA at 12 (slightly above default 10) gives needed final amplification without saturation. Sensitivity-index modes (-G N) follow a fixed curve that's biased for handheld portable use, not optimal for our marginal-signal indoor case."
+  },
+  "raw_iq_capture": {
+    "file": "data/captures/k8b_v4.iq",
+    "file_bytes": 240000000,
+    "samples": 60000000,
+    "duration_sec_actual": 20.02,
+    "command": "airspy_rx -f 183.008 -a 3000000 -t 2 -l 14 -m 15 -v 12 -b 0 -n 60000000 -r data/captures/k8b_v4.iq"
+  },
+  "live_eti_capture": {
+    "file": "data/captures/k8b_v4.eti",
+    "file_bytes": 15400960,
+    "frames": 2506,
+    "duration_sec": 240.6,
+    "command": "AIRSPY_LNA=14 AIRSPY_MIXER=15 AIRSPY_VGA=12 eti-cmdline-airspy -M 1 -C K8B -D 15 -t 60 -O best.eti -J",
+    "fic_decode": {
+      "frames_parsed": 2506,
+      "fib_pass_rate_pct": "~75 (fibquality 100)",
+      "ensemble_eid_hex": "0xE040",
+      "ensemble_label": "YTN DMB",
+      "services_detected": 5,
+      "service_list": ["mYTN", "HD mYTN", "4DRIVE", "LOTTE Homeshop", "YTN EWS"]
+    },
+    "outer_rs_decode": {
+      "aligned": true,
+      "phase_offset": 148,
+      "rs_blocks_total": 12960,
+      "rs_corrected": 10302,
+      "rs_failed": 2658,
+      "rs_pct": 79.5,
+      "verdict": "ROBUST VIDEO DECODE — k8b_100pct (87.3%) territory."
+    }
+  },
+  "video_decode_output": {
+    "tool": "tools/decode_video.py",
+    "h264_es_bytes": 904592,
+    "mp4_file": "data/captures/k8b_v4_demo.mp4",
+    "mp4_bytes": 915645,
+    "pes_packets_parsed": 1418,
+    "sl_packets_ok": 1418,
+    "nal_non_idr": 1367,
+    "nal_idr": 51,
+    "idr_thumbnails_extracted": 20,
+    "idr_dir": "data/captures/k8b_v4_idr/",
+    "sps_hex": "6742000d95a0507c40",
+    "pps_hex": "68ce3880",
+    "profile_idc": "0x42 (Baseline)",
+    "level_idc": "0x0d (Level 1.3)",
+    "resolution": "320x240",
+    "framerate": "25 fps",
+    "content_observed": "real-time YTN news segments including '이란, 러군기지 보복 공격', '나무호 II', '나무호 피격 관련성 부인'"
+  },
+  "comparison_table": [
+    {"tag": "k8b_100pct", "snr_db": 13, "fib_pct": 75.0, "rs_pct": 87.3, "frames": 5016, "mp4": "YES"},
+    {"tag": "k8b_v4 (this) ★★★", "snr_db": 12, "fib_pct": "~75", "rs_pct": 79.5, "frames": 2506, "mp4": "YES"},
+    {"tag": "k8b_v3", "snr_db": 11, "fib_pct": 72.8, "rs_pct": 0.17, "frames": 2506, "mp4": "no (gain off)"},
+    {"tag": "k8b_v2", "snr_db": 8, "fib_pct": 44.0, "rs_pct": 0, "frames": 2088, "mp4": "no"},
+    {"tag": "k8b_strong", "snr_db": 5, "fib_pct": 11.0, "rs_pct": 0, "frames": 502, "mp4": "no"},
+    {"tag": "k8b_rust", "snr_db": 4, "fib_pct": 9.0, "rs_pct": 0, "frames": 868, "mp4": "no"}
+  ],
+  "intended_use": [
+    "★★★ NEW video-decode-quality reference at Sinnonhyeon (alongside k8b_100pct)",
+    "★ Best dab-rs oracle for end-to-end Stage 1-7 + video decode validation",
+    "Demonstrates: window + manual L14/M15/V12 reaches MP4 territory WITHOUT LNA",
+    "Documents systematic gain sweep methodology + optimal point"
+  ],
+  "key_engineering_findings": [
+    "Hardware AGC (-G 0) leaves small-signal regime under-amplified (VGA=10 default)",
+    "Manual L14/M15/V12 outperforms all -G sensitivity-curve modes (1-21) tested",
+    "Window placement (vs interior) drops PSD noise floor 11 dB — more impactful than path-loss alone",
+    "Combination of two changes (location + manual gain) brings us from 0.17% RS → 79.5% RS",
+    "Real YTN news content successfully decoded — fully end-to-end verifiable artifact"
+  ]
+}
