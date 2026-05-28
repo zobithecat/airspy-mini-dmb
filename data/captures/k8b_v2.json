@@ -1,0 +1,101 @@
+{
+  "schema_version": 1,
+  "tag": "k8b_v2",
+  "notes": "Second-generation K8B capture (2026-05-27) with upgraded antenna setup at the same Sinnonhyeon location. New antenna: significantly improved over the 41 cm 1/4-λ monopole used for k8b_rust and the moderate setup used for k8b_strong, but still no LNA. Captured both raw I/Q (k8b_v2.iq, 240 MB) and an ETI file from eti-cmdline-airspy LIVE (k8b_v2.eti, 12.8 MB, 2088 frames). The live ETI is the better of the two (int16 native precision throughout the OFDM chain, no cu8 quantization loss). Multi-channel scan confirms K8B is the only K-block ensemble within reception threshold at this site/antenna combination — K12A/B/C (MBC DMB / U-KBS / SBS u) all report 'no DAB signal here', consistent with K8B (YTN) being the strongest Korean DMB transmitter from Namsan + 4 SFN sites. FIB pass rate 43.96% (3672/8352), well above k8b_strong's 11% but still below k8b_100pct's 75%. RS chain aligns at phase 196 but corrects 0/10796 blocks — BER still exceeds t=8 limit, meaning end-to-end video decode (MP4) is not yet achievable. Need ~3 dB more SNR for that (LNA addition or move to outdoor / window line-of-sight to Namsan). For dab-rs purposes: this is now the best OFDM/inner-FEC oracle (better than k8b_strong), with the bonus that all 5 services are correctly identified and an eti-stuff ETI ground-truth exists.",
+  "rf": {
+    "channel": "K8B",
+    "frequency_hz": 183008000,
+    "frequency_mhz": 183.008,
+    "raster": "Korean K-block (1.728 MHz spacing)",
+    "operator": "YTN DMB",
+    "gain_mode": "manual",
+    "lna_gain": 14,
+    "mixer_gain": 15,
+    "vga_gain": 15,
+    "bias_tee": false,
+    "sample_rate": 3000000,
+    "sample_format": "INT16_IQ",
+    "estimated_snr_eti_stuff_db": 8,
+    "estimated_snr_psd_db": 27.3
+  },
+  "environment": {
+    "antenna": "upgraded antenna (specific model TBD by user), no separate LNA, indoor near window",
+    "antenna_amplifier_powered": false,
+    "location": "Sinnonhyeon (신논현), Seocho-gu, Seoul, Republic of Korea — indoor near window",
+    "indoor": true,
+    "channel_scan_results": {
+      "K8B": "✓ lock (YTN DMB EId 0xE040, 5 services)",
+      "K12A": "✗ no DAB signal here (MBC DMB out of range)",
+      "K12B": "✗ no DAB signal here (U-KBS out of range)",
+      "K12C": "✗ no DAB signal here (SBS u out of range)",
+      "note": "K-block scan: only K8B receivable at current setup. K12 family ~3 dB weaker per PSD probe (rms 14 dB vs K8B 17 dB); antenna or EIRP frequency-dependent. Suggests antenna gain pattern favors lower VHF (183 MHz) over upper VHF (205-209 MHz)."
+    }
+  },
+  "raw_iq_capture": {
+    "file": "data/captures/k8b_v2.iq",
+    "file_bytes": 240000000,
+    "samples": 60000000,
+    "duration_sec_actual": 20.02,
+    "command": "airspy_rx -f 183.008 -a 3000000 -t 2 -l 14 -m 15 -v 15 -b 0 -n 60000000 -r data/captures/k8b_v2.iq",
+    "notes": "Captured first, before the live eti-cmdline-airspy run. Suitable for dab-rs OFDM Stage 1-7 validation."
+  },
+  "live_eti_capture": {
+    "file": "data/captures/k8b_v2.eti",
+    "file_bytes": 12832768,
+    "frames": 2088,
+    "duration_sec": 200.4,
+    "command": "eti-cmdline-airspy -M 1 -C K8B -D 30 -t 50 -O v2.eti -G 21 -J",
+    "tool": "eti-stuff/eti-cmdline/build/eti-cmdline-airspy (stock, no patches)",
+    "notes": "Captured immediately after the raw I/Q with the same RF setup. This is the eti-stuff ground-truth ETI for cross-validation against dab-rs Stage 1-7 output."
+  },
+  "validation": {
+    "4_gate_validator_on_iq": {
+      "tool": "tools/iq_validate_dab.py",
+      "verdict": "ALL GATES PASS",
+      "gate_1_psd_peak_delta_db": 27.3,
+      "gate_2_null_dips_per_20s": "~210",
+      "gate_3_cp_autocorr_lock_pct": 98,
+      "gate_3_cp_autocorr_peak": 0.513
+    },
+    "fic_decode_on_live_eti": {
+      "tool": "tools/dump_fic.py",
+      "frames_parsed": 2088,
+      "bad_frames": 0,
+      "fib_ok": 3672,
+      "fib_total": 8352,
+      "fib_pass_rate_pct": 43.96,
+      "ensemble_eid_hex": "0xE040",
+      "ensemble_label": "YTN DMB",
+      "subchannels_detected": 4,
+      "services_detected": 5,
+      "service_list": ["mYTN (SubCh 1)", "HD mYTN (SubCh 6)", "4DRIVE (packet)", "LOTTE Homeshop (SubCh 9)", "YTN EWS (SubCh 58)"]
+    },
+    "outer_rs_decode_on_live_eti": {
+      "tool": "tools/verify_outer_fec.py",
+      "aligned": true,
+      "phase_offset": 196,
+      "rs_blocks_total": 10796,
+      "rs_corrected": 0,
+      "rs_failed": 10796,
+      "verdict": "FAIL — BER exceeds t=8 RS correction limit on every block. Not video-decode quality. Need ~3 dB more SNR via LNA or outdoor placement."
+    }
+  },
+  "comparison_to_other_captures": [
+    {"tag": "k8b_100pct", "snr_db": 13, "fib_pct": 75, "rs_pct": 87.3, "mp4": "YES"},
+    {"tag": "k8b_v2 (this)", "snr_db": 8, "fib_pct": 44, "rs_pct": 0, "mp4": "no — close, ~3 dB short"},
+    {"tag": "k8b_strong", "snr_db": 5, "fib_pct": 11, "rs_pct": 0, "mp4": "no"},
+    {"tag": "k8b_rust", "snr_db": 4, "fib_pct": 9, "rs_pct": 0, "mp4": "no"}
+  ],
+  "intended_use": [
+    "★ NEW best dab-rs OFDM/inner-FEC oracle (better than k8b_strong)",
+    "Stage A (FEC+ETI+FIC) byte-identical cross-check vs k8b_v2.eti",
+    "Stage B (Viterbi+descramble) byte-identical cross-check",
+    "Stage C (per-symbol OFDM output) byte-identical cross-check",
+    "Documentation of channel scan results (K8B vs K12 family power difference)"
+  ],
+  "not_for": [
+    "End-to-end MP4 video decode — RS BER too high, 0/10796 corrected",
+    "k8b_100pct.eti replacement (still the high-SNR reference)",
+    "Service-level label paper claims (use k8b_100pct's complete decode)"
+  ]
+}
