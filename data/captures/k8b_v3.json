@@ -1,0 +1,92 @@
+{
+  "schema_version": 1,
+  "tag": "k8b_v3",
+  "notes": "★ NEW BEST K8B capture after moving antenna to window (2026-05-28). Hardware AGC mode (-G 0, same as k8b_100pct success setup). FIB pass rate 72.8% (vs k8b_v2's 44%, k8b_100pct's 75%) — almost matches the original high-SNR reference. eti-stuff internal SNR 11 dB (vs 8 / 5 / 4 for previous captures). First successful RS decode at this site since k8b_100pct: 22/12960 corrected blocks. Still ~2 dB short of robust video decode quality (k8b_100pct gave 87.3% RS), but cleanly above the 'all-fail' regime that k8b_v2 / k8b_strong / k8b_rust were in. The dramatic improvement is from window-edge antenna placement: PSD outer-5% noise floor dropped 11 dB (from +11 to +0.0), indicating significantly less indoor RF interference and cleaner line-of-sight path to Namsan (~5 km). The Ag mode hardware AGC (vs manual L14/M15/V15) avoids over-driving the front end on the now-stronger signal. Pair of capture: raw I/Q (k8b_v3.iq, 240 MB INT16) + live ETI ground truth (k8b_v3.eti, 15.4 MB, 2506 frames). Both captured within the same RF time window so they share the channel state.",
+  "rf": {
+    "channel": "K8B",
+    "frequency_hz": 183008000,
+    "frequency_mhz": 183.008,
+    "raster": "Korean K-block (1.728 MHz spacing)",
+    "operator": "YTN DMB",
+    "gain_mode_iq": "manual (L14 M15 V15)",
+    "gain_mode_eti": "hardware AGC (-G 0)",
+    "bias_tee": false,
+    "sample_rate": 3000000,
+    "sample_format": "INT16_IQ",
+    "estimated_snr_eti_stuff_db": 11,
+    "estimated_snr_psd_db": 40
+  },
+  "environment": {
+    "antenna": "upgraded antenna at window edge",
+    "antenna_amplifier_powered": false,
+    "location": "Sinnonhyeon (신논현), Seocho-gu, Seoul — indoor AT WINDOW",
+    "indoor": true,
+    "key_change_from_k8b_v2": "antenna moved from interior position to window — PSD outer-5% noise floor dropped 11 dB (from +11 to +0.0), indicating significantly less indoor RF interference and better Namsan LoS"
+  },
+  "raw_iq_capture": {
+    "file": "data/captures/k8b_v3.iq",
+    "file_bytes": 240000000,
+    "samples": 60000000,
+    "duration_sec_actual": 20.02,
+    "command": "airspy_rx -f 183.008 -a 3000000 -t 2 -l 14 -m 15 -v 15 -b 0 -n 60000000 -r data/captures/k8b_v3.iq",
+    "validation_4_gate": {
+      "verdict": "ALL GATES PASS",
+      "adc_fill_dbfs_12bit": -14.7,
+      "psd_peak_delta_db": 40.0,
+      "psd_mean_delta_db": 30.2,
+      "psd_edge_outer5_db": 0.0,
+      "null_dips_per_20s": 211,
+      "null_near_96ms": 208,
+      "cp_autocorr_peak": 0.111,
+      "cp_autocorr_lock_pct": 96
+    }
+  },
+  "live_eti_capture": {
+    "file": "data/captures/k8b_v3.eti",
+    "file_bytes": 15400960,
+    "frames": 2506,
+    "duration_sec": 240.6,
+    "command": "eti-cmdline-airspy -M 1 -C K8B -D 25 -t 60 -O win2.eti -G 0 -J",
+    "tool": "eti-stuff/eti-cmdline/build/eti-cmdline-airspy (stock, no patches)",
+    "fic_decode": {
+      "frames_parsed": 2506,
+      "fib_ok": 7297,
+      "fib_total": 10024,
+      "fib_pass_rate_pct": 72.8,
+      "ensemble_eid_hex": "0xE040",
+      "ensemble_label": "YTN DMB",
+      "services_detected": 5,
+      "service_list": ["mYTN", "HD mYTN", "4DRIVE", "LOTTE Homeshop", "YTN EWS"]
+    },
+    "outer_rs_decode": {
+      "aligned": true,
+      "phase_offset": 124,
+      "rs_blocks_total": 12960,
+      "rs_ok": 0,
+      "rs_corrected": 22,
+      "rs_failed": 12938,
+      "rs_pct": 0.17,
+      "verdict": "FIRST NON-ZERO RS at this site since k8b_100pct, but still ~2 dB short for robust video decode. Try LNA or higher gain stage."
+    },
+    "fibquality_range": "95-99"
+  },
+  "comparison_table": [
+    {"tag": "k8b_100pct", "snr_db": 13, "fib_pct": 75.0, "rs_pct": 87.3, "frames": 5016, "mp4": "YES"},
+    {"tag": "k8b_v3 (this) ★", "snr_db": 11, "fib_pct": 72.8, "rs_pct": 0.17, "frames": 2506, "mp4": "no (close)"},
+    {"tag": "k8b_v2", "snr_db": 8, "fib_pct": 44.0, "rs_pct": 0, "frames": 2088, "mp4": "no"},
+    {"tag": "k8b_strong", "snr_db": 5, "fib_pct": 11.0, "rs_pct": 0, "frames": 502, "mp4": "no"},
+    {"tag": "k8b_rust", "snr_db": 4, "fib_pct": 9.0, "rs_pct": 0, "frames": 868, "mp4": "no"}
+  ],
+  "intended_use": [
+    "★ NEW best dab-rs OFDM/inner-FEC oracle (better than k8b_v2)",
+    "★ Highest-FIB capture at the new site since k8b_100pct",
+    "Stage A byte-identical reference (close to k8b_100pct quality)",
+    "Stage B/C OFDM per-symbol cross-validation",
+    "Demonstrates the importance of window placement (~+5 dB effective gain)"
+  ],
+  "not_for": [
+    "End-to-end MP4 video decode — still ~2 dB short (RS 0.17% vs needed ~50%+)",
+    "Use k8b_100pct for high-RS video reference"
+  ],
+  "engineering_observation": "Moving antenna from indoor location to window edge dropped indoor RF interference by ~11 dB (PSD outer-5% from +11 to +0 dB) and boosted effective SNR by ~3 dB (eti-stuff estimator 8→11 dB). The improvement was larger from the noise-floor reduction than from absolute signal level. This validates the gotcha #4 observation that indoor reception of VHF Band III at Sinnonhyeon is dominated by adjacent-channel interference and partial-shielding rather than free-space path loss alone."
+}

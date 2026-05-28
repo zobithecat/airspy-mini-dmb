@@ -44,6 +44,8 @@ data/scan/
 !data/captures/k8b_strong.iq
 !data/captures/k8b_v2.iq
 !data/captures/k8b_v2.eti
+!data/captures/k8b_v3.iq
+!data/captures/k8b_v3.eti
 !data/long_captures/k8b_5min.eti
 
 # Generated ensemble JSON dumps (from eti-cmdline -J) — these are produced
