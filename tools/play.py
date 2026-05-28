@@ -142,11 +142,18 @@ def open_player(args) -> subprocess.Popen:
         return subprocess.Popen(["cat"], stdin=subprocess.PIPE,
                                  stdout=open(args.dump_only, "wb"))
     if DMB_FFPLAY.exists():
+        # Tolerance settings: live T-DMB stream is bursty (PAT/PMT every ~500ms,
+        # TS only flows after outer-FEC alignment, ~20% RS-uncorrectable at
+        # marginal SNR).  Push analyzeduration + probesize to 50 s / 50 MB so
+        # ffplay waits for enough valid TS packets before declaring failure.
+        # Force MPEG-TS demuxer with `-f mpegts` so it doesn't try alternative
+        # format probing on the early junk bytes.
         argv = [str(DMB_FFPLAY),
-                "-fflags", "+genpts+igndts+discardcorrupt",
+                "-f", "mpegts",
+                "-fflags", "+genpts+igndts+discardcorrupt+nobuffer",
                 "-err_detect", "ignore_err",
-                "-analyzeduration", "5000000",
-                "-probesize", "5000000",
+                "-analyzeduration", "50000000",
+                "-probesize", "50000000",
                 "-i", "pipe:0"]
     else:
         # Fallback: ffmpeg → wav stdout → system audio? Use ffmpeg + mpv
@@ -172,29 +179,49 @@ def main() -> int:
     args = ap.parse_args()
 
     frames_iter, cleanup = open_eti_source(args)
-    player = open_player(args)
-    assert player.stdin is not None
 
+    # Don't launch ffplay until we have a TS warmup buffer.  Otherwise the
+    # player sees ~15-30 s of empty/garbage stdin during the eti-cmdline
+    # lock+FEC-align phase and declares the input invalid before real TS
+    # ever arrives.  Buffer ~1000 packets (~2-3 s worth) THEN spawn ffplay
+    # and stream the buffer in.
+    WARMUP_PACKETS = 1000
+    warmup = bytearray()
+    player = None
     try:
         n_pkts = 0
         for ts in stream_ts_packets(frames_iter, args.subch):
-            try:
-                player.stdin.write(ts)
-            except BrokenPipeError:
-                break
-            n_pkts += 1
-            if n_pkts % 1000 == 0:
-                print(f"[play] {n_pkts} TS packets piped", file=sys.stderr)
+            if player is None:
+                warmup.extend(ts)
+                n_pkts += 1
+                if n_pkts >= WARMUP_PACKETS:
+                    print(f"[play] warmup buffer ready ({n_pkts} packets, "
+                          f"{len(warmup)} bytes); launching ffplay",
+                          file=sys.stderr)
+                    player = open_player(args)
+                    assert player.stdin is not None
+                    player.stdin.write(bytes(warmup))
+                    warmup = bytearray()
+            else:
+                try:
+                    player.stdin.write(ts)
+                except BrokenPipeError:
+                    break
+                n_pkts += 1
+                if n_pkts % 1000 == 0:
+                    print(f"[play] {n_pkts} TS packets piped", file=sys.stderr)
     finally:
-        try:
-            player.stdin.close()
-        except Exception:
-            pass
+        if player is not None:
+            try:
+                player.stdin.close()
+            except Exception:
+                pass
         cleanup()
-        try:
-            player.wait(timeout=5)
-        except Exception:
-            player.terminate()
+        if player is not None:
+            try:
+                player.wait(timeout=5)
+            except Exception:
+                player.terminate()
     return 0
 
 
