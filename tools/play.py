@@ -75,32 +75,38 @@ def stream_ts_packets(frames, sub_ch_id: int, probe_bytes: int = 100_000):
 
     Uses our sync-aligned Forney deinterleaver + RS(204,188) decoder
     (tdmb.fec.outer.KoreanTDmbOuterFec) — the same fix that takes K8B
-    from 0% to 87.3% in offline mode.  This is the only way the
-    downstream player (dmb-oss ffplay) gets a valid MPEG-TS stream
-    with correctly-aligned 0x47 sync bytes and recoverable PES/SL/H.264.
-
-    The legacy heuristic (just slicing 188 out of every 204 bytes and
-    keeping ones that happen to start with 0x47) silently emits
-    byte-shifted garbage — ffplay reports "Could not detect TS packet
-    size" on that.
+    from 0% to 87.3% in offline mode.
     """
+    import time
     fec = KoreanTDmbOuterFec()
     cif_iter = extract_subchannel(frames, sub_ch_id)
     n_packets = 0
+    n_bytes_in = 0
+    n_chunks = 0
+    t0 = time.time()
+    last_status = t0
     for chunk in cif_iter:
         if not chunk:
             continue
+        n_chunks += 1
+        n_bytes_in += len(chunk)
+        # Periodic diagnostic so user knows progress
+        now = time.time()
+        if now - last_status > 2.0:
+            elapsed = now - t0
+            print(f"[play] {elapsed:.1f}s: rx={n_bytes_in} bytes "
+                  f"({n_chunks} chunks), aligned={fec._aligned}, "
+                  f"phase={fec._phase_offset}, packets_out={n_packets}",
+                  file=sys.stderr, flush=True)
+            last_status = now
         for ts in fec.feed(chunk):
-            # ts is a TsPacket dataclass with .data (188 bytes) and .rs_errors
             if ts.rs_errors < 0:
-                # uncorrectable — still emit, ffplay's error tolerance handles it
                 pass
             yield ts.data
             n_packets += 1
             if n_packets == 1:
-                # report alignment as soon as it locks
                 print(f"[play] outer FEC locked: phase={fec._phase_offset}, "
-                      f"streaming TS packets", file=sys.stderr)
+                      f"streaming TS packets", file=sys.stderr, flush=True)
 
 
 def open_eti_source(args) -> tuple:
