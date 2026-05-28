@@ -19,7 +19,8 @@
     "estimated_snr_psd_db": "TBD (run iq_validate_dab.py on k8b_v4.iq)"
   },
   "environment": {
-    "antenna": "upgraded antenna at window edge (same as k8b_v3)",
+    "antenna": "DIY half-wave dipole — 41 cm × 2 enameled-wire arms (total 82 cm), fed via ~1 m Teflon-insulated twisted-pair feedline (no coax), connected via reused SMA male base from a sacrificed rubber-duck WiFi antenna. Horizontal polarization. Hand-positioned at window edge facing roughly the Namsan transmitter direction (~5 km bearing ~340° from Sinnonhyeon). No LNA.",
+    "antenna_design_rationale": "λ/2 dipole at 183 MHz = 819 mm (theoretical) ≈ 820 mm (built); each arm 41 cm = λ/4 = optimal natural impedance ~73Ω; Teflon twisted-pair impedance ~80Ω matches SMA's 50Ω with SWR ~1.6 (negligible mismatch loss); Teflon dielectric (εr=2.1, very low loss tangent) keeps feedline insertion loss <0.2 dB at 183 MHz over 1 m.",
     "antenna_amplifier_powered": false,
     "location": "Sinnonhyeon (신논현), Seocho-gu, Seoul — indoor AT WINDOW",
     "indoor": true,

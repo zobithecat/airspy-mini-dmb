@@ -17,7 +17,7 @@
     "estimated_snr_psd_db": 40
   },
   "environment": {
-    "antenna": "upgraded antenna at window edge",
+    "antenna": "DIY half-wave dipole — 41 cm × 2 enameled-wire arms (total 82 cm), fed via ~1 m Teflon-insulated twisted-pair feedline (no coax), connected via reused SMA male base from a sacrificed rubber-duck WiFi antenna. Horizontal polarization. Hand-positioned at window edge facing roughly the Namsan transmitter direction (~5 km bearing ~340° from Sinnonhyeon). No LNA.",
     "antenna_amplifier_powered": false,
     "location": "Sinnonhyeon (신논현), Seocho-gu, Seoul — indoor AT WINDOW",
     "indoor": true,

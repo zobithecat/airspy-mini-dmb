@@ -19,9 +19,9 @@
     "estimated_snr_psd_db": 27.3
   },
   "environment": {
-    "antenna": "upgraded antenna (specific model TBD by user), no separate LNA, indoor near window",
+    "antenna": "DIY half-wave dipole — 41 cm × 2 enameled-wire arms (total 82 cm), fed via ~1 m Teflon-insulated twisted-pair feedline (no coax), connected via reused SMA male base from a sacrificed rubber-duck WiFi antenna. Horizontal polarization. Indoor interior position (NOT at window — that comes in k8b_v3 onwards). No LNA.",
     "antenna_amplifier_powered": false,
-    "location": "Sinnonhyeon (신논현), Seocho-gu, Seoul, Republic of Korea — indoor near window",
+    "location": "Sinnonhyeon (신논현), Seocho-gu, Seoul, Republic of Korea — indoor (interior, not at window)",
     "indoor": true,
     "channel_scan_results": {
       "K8B": "✓ lock (YTN DMB EId 0xE040, 5 services)",
