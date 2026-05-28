@@ -26,6 +26,7 @@ from tdmb.eti import parse_frame, FRAME_SIZE
 from tdmb.eti.fic import FicAccumulator
 from tdmb.msc import extract_subchannel
 from tdmb.channels import by_name
+from tdmb.fec.outer import KoreanTDmbOuterFec
 
 ETI_BIN = REPO / "eti-stuff" / "eti-cmdline" / "build" / "eti-cmdline-airspy"
 DMB_FFMPEG = REPO / "local" / "dmb-ffmpeg" / "bin" / "ffmpeg"
@@ -70,55 +71,36 @@ def find_slot_offset(probe: bytes, slot: int = SLOT) -> int:
 
 
 def stream_ts_packets(frames, sub_ch_id: int, probe_bytes: int = 100_000):
-    """Extract TS-188 packets from a CIF byte stream.
-    The 204-byte slot is heuristically aligned via 0x47 hit-rate.
-    Yields complete 188-byte TS packets.
+    """Extract RS-corrected 188-byte TS packets from a CIF byte stream.
+
+    Uses our sync-aligned Forney deinterleaver + RS(204,188) decoder
+    (tdmb.fec.outer.KoreanTDmbOuterFec) — the same fix that takes K8B
+    from 0% to 87.3% in offline mode.  This is the only way the
+    downstream player (dmb-oss ffplay) gets a valid MPEG-TS stream
+    with correctly-aligned 0x47 sync bytes and recoverable PES/SL/H.264.
+
+    The legacy heuristic (just slicing 188 out of every 204 bytes and
+    keeping ones that happen to start with 0x47) silently emits
+    byte-shifted garbage — ffplay reports "Could not detect TS packet
+    size" on that.
     """
-    probe = bytearray()
+    fec = KoreanTDmbOuterFec()
     cif_iter = extract_subchannel(frames, sub_ch_id)
-    # gather probe
+    n_packets = 0
     for chunk in cif_iter:
         if not chunk:
             continue
-        probe.extend(chunk)
-        if len(probe) >= probe_bytes:
-            break
-    if not probe:
-        return
-    off = find_slot_offset(bytes(probe))
-    print(f"[play] slot offset within {SLOT}-byte cycle: {off}", file=sys.stderr)
-
-    carry = bytearray(probe)
-    i = off
-    # yield from initial probe
-    while i + TS_PKT <= len(carry):
-        pkt = bytes(carry[i:i + TS_PKT])
-        if pkt[0] == 0x47:
-            yield pkt
-        i += SLOT
-    if i >= len(carry):
-        i -= len(carry)
-        carry = bytearray()
-    else:
-        carry = bytearray(carry[i:])
-        i = 0
-
-    # continue with the rest of the stream
-    for chunk in cif_iter:
-        if not chunk:
-            continue
-        carry.extend(chunk)
-        while i + TS_PKT <= len(carry):
-            pkt = bytes(carry[i:i + TS_PKT])
-            if pkt[0] == 0x47:
-                yield pkt
-            i += SLOT
-        if i >= len(carry):
-            i -= len(carry)
-            carry = bytearray()
-        else:
-            carry = bytearray(carry[i:])
-            i = 0
+        for ts in fec.feed(chunk):
+            # ts is a TsPacket dataclass with .data (188 bytes) and .rs_errors
+            if ts.rs_errors < 0:
+                # uncorrectable — still emit, ffplay's error tolerance handles it
+                pass
+            yield ts.data
+            n_packets += 1
+            if n_packets == 1:
+                # report alignment as soon as it locks
+                print(f"[play] outer FEC locked: phase={fec._phase_offset}, "
+                      f"streaming TS packets", file=sys.stderr)
 
 
 def open_eti_source(args) -> tuple:
