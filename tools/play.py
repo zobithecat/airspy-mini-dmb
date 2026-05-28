@@ -122,8 +122,8 @@ def open_eti_source(args) -> tuple:
         [str(ETI_BIN),
          "-C", "K" + args.channel.lstrip("K"),
          "-G", str(args.gain),
-         "-d", str(args.detect),
          "-D", str(args.detect),
+         "-t", str(args.duration),   # record duration — else eti-cmdline exits after default short period
          "-O", "-"],
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
@@ -181,6 +181,7 @@ def main() -> int:
     ap.add_argument("--subch", type=int, required=True, help="sub-channel id (e.g. 1)")
     ap.add_argument("--gain", type=int, default=0, help="airspy gain (0=AGC)")
     ap.add_argument("--detect", type=int, default=30, help="OFDM sync timeout (s)")
+    ap.add_argument("--duration", type=int, default=3600, help="live capture duration (s); default 1 hour")
     ap.add_argument("--dump-only", type=Path, help="instead of playing, write TS to file")
     args = ap.parse_args()
 
